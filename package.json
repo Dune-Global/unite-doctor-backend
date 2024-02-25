@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node src/index.ts",
+    "mongo": "bash scripts/mongo.sh",
     "dev": "nodemon src/index.ts",
     "lint": "eslint . --ext .ts",
     "test": "echo \"Error: no test specified\" && exit 1"
