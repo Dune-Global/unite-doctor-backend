@@ -1099,6 +1099,11 @@ dot-prop@^5.1.0:
   dependencies:
     is-obj "^2.0.0"
 
+dotenv-safe@^9.0.0:
+  version "9.0.0"
+  resolved "https://registry.yarnpkg.com/dotenv-safe/-/dotenv-safe-9.0.0.tgz#ce6ed6b6ec47896981a090cb597bd614c8731df1"
+  integrity sha512-/M8292ReX1jMGLVf/jsAVQzQ0a453C3CJVVyqfoelV+78u9DeluqJU5HbwyQsUCzA4AV5sm52xClVgZWetX+fQ==
+
 dotenv@^16.4.5:
   version "16.4.5"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.4.5.tgz#cdd3b3b604cb327e286b4762e13502f717cb099f"
