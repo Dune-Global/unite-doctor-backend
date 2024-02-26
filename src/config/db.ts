@@ -1,9 +1,7 @@
 import mongoose, { Connection } from "mongoose";
-import dotenv from "dotenv";
+import config from "./env";
 
-dotenv.config();
-
-const mongo_url = process.env.MONGO_CONNECTION_STRING!;
+const mongo_url = config.mongo.uri!;
 
 mongoose.connection.on("error", (err) => {
 	console.error(`MongoDB connection failed ${err}`);

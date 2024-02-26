@@ -1,11 +1,9 @@
-import dotenv from "dotenv";
 import { app } from "./config/express";
 import { connect } from "./config/db";
+import config from "./config/env";
 
-dotenv.config();
-
-const HOST = process.env.HOST!;
-const PORT = parseInt(process.env.PORT!);
+const HOST = config.host!;
+const PORT = parseInt(config.port!);
 
 connect();
 app.listen(PORT, HOST, () => {

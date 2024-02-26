@@ -2,10 +2,7 @@ import express from "express";
 import morgan from "morgan";
 import bodyParser from "body-parser";
 import cors from "cors";
-import dotenv from "dotenv";
 import v1 from "../api/routes/v1";
-
-dotenv.config();
 
 const app = express();
 
