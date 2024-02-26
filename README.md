@@ -1,21 +1,25 @@
-# Unite Doctor Backend
 
-> Alpla relese
+<h1 align="center">Unite - Doctor [Backend]</h1>
+<p align="center">Unite | A medical record tracking application</p> 
 
----
-
-## How to run project locally ?
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/Dune-Global/unite-doctor-backend.git
-```
+<br>
 
 
-## Contributors
+<div align="center">
+  
+[![Commitlint](https://github.com/Dune-Global/unite-doctor-backend/actions/workflows/quality-check.yaml/badge.svg)](https://github.com/Dune-Global/unite-doctor-backend/actions/workflows/quality-check.yaml)
+</div>
 
+> [!IMPORTANT]
+> Check the **Actions** tab to inspect the Pipeline. If the pipeline fails, Please inform 🙌
+
+
+<h1 align="center">Contributors</h1>
+
+<div align="center">
+  
 <a href="https://github.com/Dune-Global/unite-doctor-backend/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Dune-Global/unite-doctor-backend" />
 </a>
-```
+</div>
+
