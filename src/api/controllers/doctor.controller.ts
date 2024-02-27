@@ -2,6 +2,21 @@ import { Request, Response, NextFunction } from "express";
 import Doctor from "../../models/doctor.model";
 import { ITransformedDoctor } from "../../types";
 
+// Test auth
+export const testAuth = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    res.json({
+      message: "Access granted",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get the list of doctors
 export const getDoctors = async (
   req: Request,
@@ -48,3 +63,25 @@ export const registerDoctor = async (
     next(Doctor.checkDuplicateFields(error));
   }
 };
+
+// Doctor login
+export const doctorAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { accessToken, refreshToken } = await Doctor.findAndGenerateToken({
+      email: req.body.email,
+      password: req.body.password,
+    });
+    res.json({
+      message: "Login Successfully",
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

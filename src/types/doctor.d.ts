@@ -41,4 +41,17 @@ export interface IDoctorModel
   list: (options: IList) => Promise<ITransformedDoctor[]>;
   checkDuplicateFields: (error: any) => APIError;
   get: (id: string) => Promise<IDoctor, APIError>;
+  findAndGenerateToken: (
+    options: IDoctorLoginRequest
+  ) => Promise<IDoctorSuccessLogin>;
+}
+
+export interface IDoctorLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface IDoctorSuccessLogin {
+  accessToken: string;
+  refreshToken: string;
 }

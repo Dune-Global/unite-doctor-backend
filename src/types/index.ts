@@ -8,5 +8,10 @@ export {
   IDoctorMethods,
   ITransformedDoctor,
   IDoctorModel,
-  IList
-} from "./doctor/doctor";
+  IList,
+  IDoctorLoginRequest,
+  IDoctorSuccessLogin,
+} from "./doctor";
+
+// JWT
+export { IAccessToken, IRefreshToken } from "./jwt";
