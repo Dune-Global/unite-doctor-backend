@@ -3,6 +3,7 @@ import morgan from "morgan";
 import bodyParser from "body-parser";
 import cors from "cors";
 import v1 from "../api/routes/v1";
+import { notFound, handler } from "../middleware/error";
 
 const app = express();
 
@@ -15,5 +16,8 @@ app.use(cors());
 // mount routes
 app.use("/api/v1", v1);
 
+// Error handling
+app.use(notFound);
+app.use(handler);
 
 export { app };
