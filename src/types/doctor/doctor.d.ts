@@ -40,4 +40,5 @@ export interface IDoctorModel
   extends mongoose.Model<IDoctor, {}, IDoctorMethods> {
   list: (options: IList) => Promise<ITransformedDoctor[]>;
   checkDuplicateFields: (error: any) => APIError;
+  get: (id: string) => Promise<IDoctor, APIError>;
 }

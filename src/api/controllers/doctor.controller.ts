@@ -19,6 +19,20 @@ export const getDoctors = async (
   }
 };
 
+// Get doctor by ID
+export const getDoctorById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const doctor = await Doctor.get(req.params.doctorId);
+    res.json(doctor.transform());
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Register a new doctor
 export const registerDoctor = async (
   req: Request,
