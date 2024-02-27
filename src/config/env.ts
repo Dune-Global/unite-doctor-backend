@@ -11,4 +11,8 @@ export default {
   host: process.env.HOST,
   port: process.env.PORT,
   bcryptRounds: 10,
+  refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET,
+  accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
+  refreshTokenExpIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+  accessTokenExpIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
 };

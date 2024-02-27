@@ -8,11 +8,13 @@ import {
   ITransformedDoctor,
   IDoctorModel,
   IList,
+  IDoctorLoginRequest,
+  IDoctorSuccessLogin,
 } from "../types";
 
 import APIError from "../errors/api-error";
 import config from "../config/env";
-
+import { createAccessToken, createRefreshToken } from "../utils/generateToken";
 const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
   {
     firstName: {
@@ -129,6 +131,65 @@ doctorSchema.statics = {
       ],
       stack: "",
     });
+  },
+
+  // Doctor login and token generation
+  // @returns {Promise<IDoctorSuccessLogin>}
+  async findAndGenerateToken(
+    options: IDoctorLoginRequest
+  ): Promise<IDoctorSuccessLogin> {
+    if (!options.email) {
+      throw new APIError({
+        message: "An email is required to generate a token",
+        errors: [],
+        status: httpStatus.UNAUTHORIZED,
+        stack: "",
+      });
+    }
+
+    const doctor = await this.findOne({
+      $and: [
+        {
+          email: options.email,
+        },
+      ],
+    }).exec();
+
+    if (options.password) {
+      if (doctor) {
+        if (await doctor.passwordMatches(options.password, doctor?.password)) {
+          const accessToken = createAccessToken({
+            id: doctor.id,
+            email: doctor.email,
+            isEmailVerified: doctor.isEmailVerified,
+            isSlmcVerified: doctor.isSlmcVerified,
+          });
+
+          const refreshToken = createRefreshToken({
+            id: doctor.id,
+          });
+
+          return {
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+          };
+        } else {
+          console.log("password is wrong");
+        }
+      }
+
+      throw new APIError({
+        message: "Invalid Username or password",
+        errors: [],
+        status: httpStatus.UNAUTHORIZED,
+        stack: "",
+      });
+    }
+
+    return {
+      accessToken: "",
+      refreshToken: "",
+    };
   },
 
   // get all doctor in a list with pagination
