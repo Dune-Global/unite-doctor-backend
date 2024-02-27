@@ -1,11 +1,9 @@
-import path from "path";
+import dotenv from "dotenv";
 
-// Import .env variables
-require("dotenv-safe").config({
-  path: path.join(__dirname, "../../.env.example"),
-});
+dotenv.config();
 
 export default {
+  env: process.env.NODE_ENV,
   mongo: {
     uri: process.env.MONGO_CONNECTION_STRING,
   },
