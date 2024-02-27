@@ -105,6 +105,32 @@ doctorSchema.method({
 });
 
 doctorSchema.statics = {
+  // get user by
+  // @returns Promise<User, APIError>
+  async get(id) {
+    let doctor;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      doctor = await this.findById(id).exec();
+    }
+    if (doctor) {
+      return doctor;
+    }
+
+    throw new APIError({
+      message: "Doctor does not exist",
+      status: httpStatus.NOT_FOUND,
+      errors: [
+        {
+          field: "Doctor",
+          location: "body",
+          messages: ["Doctor does not exist"],
+        },
+      ],
+      stack: "",
+    });
+  },
+
   // get all doctor in a list with pagination
   list({ page = 1, perPage = 30, name, email }: IList) {
     const options = omitBy({ name, email }, isNil);
