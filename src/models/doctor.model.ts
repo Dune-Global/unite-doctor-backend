@@ -34,10 +34,12 @@ const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
     slmcNumber: {
       type: String,
       required: true,
+      unique: true,
     },
     mobile: {
       type: Number,
       required: true,
+      unique: true,
     },
     password: {
       type: String,
@@ -64,7 +66,7 @@ doctorSchema.pre("save", async function save(next) {
   try {
     if (!this.isModified("password")) return next();
 
-    // hash user password with bcrypt
+    // hash doctor password with bcrypt
     const pwhash = await hash(this.password, config.bcryptRounds);
     this.password = pwhash;
 
@@ -103,7 +105,7 @@ doctorSchema.method({
 });
 
 doctorSchema.statics = {
-  // get all users in a list with pagination
+  // get all doctor in a list with pagination
   list({ page = 1, perPage = 30, name, email }: IList) {
     const options = omitBy({ name, email }, isNil);
 
@@ -114,24 +116,70 @@ doctorSchema.statics = {
       .exec();
   },
 
-  // Check if the user email is a duplicate
-  checkDuplicateEmail(error: any) {
+  // Check if the doctor duplicate & unique fields exist
+  checkDuplicateFields(error: any) {
     console.log(error.name, error.code);
 
-    if (error.name === "MongoServerError" && error.code === 11000) {
+    // Check if the email already exists
+    if (
+      error.name === "MongoServerError" &&
+      error.code === 11000 &&
+      Object.keys(error.keyValue)[0] === "email"
+    ) {
       return new APIError({
         message: "Validation Error",
         errors: [
           {
             field: "email",
             location: "body",
-            messages: ['"email" already exists'],
+            messages: ["email already exists"],
           },
         ],
         stack: error.stack,
         status: httpStatus.CONFLICT,
       });
     }
+
+    // Check if the slmcNumber already exists
+    if (
+      error.name === "MongoServerError" &&
+      error.code === 11000 &&
+      Object.keys(error.keyValue)[0] === "slmcNumber"
+    ) {
+      return new APIError({
+        message: "Validation Error",
+        errors: [
+          {
+            field: "slmcNumber",
+            location: "body",
+            messages: ["slmcNumber already exists"],
+          },
+        ],
+        stack: error.stack,
+        status: httpStatus.CONFLICT,
+      });
+    }
+
+    // Check if the mobile already exists
+    if (
+      error.name === "MongoServerError" &&
+      error.code === 11000 &&
+      Object.keys(error.keyValue)[0] === "mobile"
+    ) {
+      return new APIError({
+        message: "Validation Error",
+        errors: [
+          {
+            field: "mobile",
+            location: "body",
+            messages: ["mobile already exists"],
+          },
+        ],
+        stack: error.stack,
+        status: httpStatus.CONFLICT,
+      });
+    }
+
     return error;
   },
 };

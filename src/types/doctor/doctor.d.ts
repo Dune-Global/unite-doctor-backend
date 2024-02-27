@@ -39,5 +39,5 @@ export interface IList {
 export interface IDoctorModel
   extends mongoose.Model<IDoctor, {}, IDoctorMethods> {
   list: (options: IList) => Promise<ITransformedDoctor[]>;
-  checkDuplicateEmail: (error: any) => APIError;
+  checkDuplicateFields: (error: any) => APIError;
 }
