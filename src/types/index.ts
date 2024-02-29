@@ -11,6 +11,8 @@ export {
   IList,
   IDoctorLoginRequest,
   IDoctorSuccessLogin,
+  IDoctorUpdatableFields,
+  IDoctorUpdateSuccess
 } from "./doctor";
 
 // JWT

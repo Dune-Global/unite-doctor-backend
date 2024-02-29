@@ -7,6 +7,18 @@ export interface ITransformedDoctor {
   email: string;
   slmcNumber: string;
   mobile: number;
+  designation: string;
+  dateOfBirth: string;
+  gender: string;
+  imgUrl: string;
+  nicNumber: string;
+  clinic: {
+    isClinic?: boolean;
+    clinicName?: string;
+    clinicAddress?: string;
+  };
+  currentUniversity?: string;
+  currentHospital?: string;
   isEmailVerified: boolean;
   isSlmcVerified: boolean;
 
@@ -19,9 +31,41 @@ export interface IDoctor {
   email: string;
   slmcNumber: string;
   mobile: number;
-  password: string;
+  designation: string;
+  dateOfBirth: string;
+  gender: string;
+  nicNumber: string;
+  imgUrl: string;
+  clinic: {
+    isClinic: boolean;
+    clinicName?: string;
+    clinicAddress?: string;
+  };
+  currentUniversity: string;
+  currentHospital: string;
   isEmailVerified: boolean;
   isSlmcVerified: boolean;
+  password: string;
+}
+
+export interface IDoctorUpdatableFields {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  slmcNumber?: string;
+  mobile?: number;
+  designation?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nicNumber?: string;
+  imgUrl?: string;
+  clinic?: {
+    isClinic: boolean;
+    clinicName?: string;
+    clinicAddress?: string;
+  };
+  currentUniversity?: string;
+  currentHospital?: string;
 }
 
 export interface IDoctorMethods {
@@ -54,4 +98,9 @@ export interface IDoctorLoginRequest {
 export interface IDoctorSuccessLogin {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface IDoctorUpdateSuccess {
+  message: string;
+  updatedFieldNames: string[];
 }
