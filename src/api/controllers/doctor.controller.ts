@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import Doctor from "../../models/doctor.model";
-import { ITransformedDoctor } from "../../types";
+import { ITransformedDoctor, IDoctorUpdateSuccess } from "../../types";
+import { defaultProfileImage } from "../../utils/defaultProfileImage";
+import APIError from "../../errors/api-error";
 
 // Test auth
 export const testAuth = async (
@@ -55,7 +57,17 @@ export const registerDoctor = async (
   next: NextFunction
 ) => {
   try {
-    const doctor = new Doctor(req.body);
+    const { firstName, lastName, imgUrl, ...otherFields } = req.body;
+
+    const constructedImgUrl = defaultProfileImage(firstName, lastName);
+
+    const doctor = new Doctor({
+      firstName,
+      lastName,
+      imgUrl: constructedImgUrl,
+      ...otherFields,
+    });
+
     const savedDoctor = await doctor.save();
     res.json(savedDoctor.transform());
   } catch (error) {
@@ -65,7 +77,7 @@ export const registerDoctor = async (
 };
 
 // Doctor login
-export const doctorAuth = async (
+export const loginDoctor = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -85,3 +97,46 @@ export const doctorAuth = async (
   }
 };
 
+// Update additional details
+export const updateDoctorDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<IDoctorUpdateSuccess> => {
+  try {
+    const updateFields = req.body;
+    const doctor = await Doctor.get(req.params.doctorId);
+
+    if (doctor) {
+      try {
+        doctor.set(updateFields);
+        await doctor.save();
+        res.json({
+          message: "Doctor updated successfully!",
+          updatedFieldNames: Object.keys(updateFields),
+        });
+      } catch (error) {
+        next(Doctor.checkDuplicateFields(error));
+      }
+    }
+
+    throw new APIError({
+      message: "Doctor does not exist",
+      status: 404,
+      errors: [
+        {
+          field: "Doctor",
+          location: "body",
+          messages: ["Doctor does not exist"],
+        },
+      ],
+      stack: "",
+    });
+  } catch (error) {
+    next(Doctor.checkDuplicateFields(error));
+  }
+  return {
+    message: "",
+    updatedFieldNames: [""],
+  };
+};
