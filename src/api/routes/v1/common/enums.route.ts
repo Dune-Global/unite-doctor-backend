@@ -3,7 +3,7 @@ import {
   getAllHospitalEnums,
   getAllDoctorDesignationEnums,
   getAllGenderEnums,
-} from "../../../api/controllers/enums.contoller";
+} from "../../../controllers/common/enums.contoller";
 import express from "express";
 
 const router = express.Router();

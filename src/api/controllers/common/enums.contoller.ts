@@ -3,7 +3,7 @@ import {
   SriLankaHospitals,
   DoctorDesignation,
   Gender,
-} from "../../enums";
+} from "../../../enums";
 import { Request, Response, NextFunction } from "express";
 
 // Get all the list of universities

@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
-import doctorRouter from "./doctor.route";
-import refreshRouter from "./refreshToken.route";
-import enumsRouter from "./enums.route";
+import doctorRouter from "./doctor/doctor.route";
+import refreshRouter from "./common/refreshToken.route";
+import enumsRouter from "./common/enums.route";
 const router = express.Router();
 
 // Test route for check overall connectivity

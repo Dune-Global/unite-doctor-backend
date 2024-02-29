@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import Doctor from "../../models/doctor.model";
-import { ITransformedDoctor, IDoctorUpdateSuccess } from "../../types";
-import { defaultProfileImage } from "../../utils/defaultProfileImage";
-import APIError from "../../errors/api-error";
+import Doctor from "../../../models/doctor.model";
+import { ITransformedDoctor, IDoctorUpdateSuccess } from "../../../types";
+import APIError from "../../../errors/api-error";
 
 // Test auth
 export const testAuth = async (
@@ -45,53 +44,6 @@ export const getDoctorById = async (
   try {
     const doctor = await Doctor.get(req.params.doctorId);
     res.json(doctor.transform());
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Register a new doctor
-export const registerDoctor = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { firstName, lastName, imgUrl, ...otherFields } = req.body;
-
-    const constructedImgUrl = defaultProfileImage(firstName, lastName);
-
-    const doctor = new Doctor({
-      firstName,
-      lastName,
-      imgUrl: constructedImgUrl,
-      ...otherFields,
-    });
-
-    const savedDoctor = await doctor.save();
-    res.json(savedDoctor.transform());
-  } catch (error) {
-    console.error(error.code);
-    next(Doctor.checkDuplicateFields(error));
-  }
-};
-
-// Doctor login
-export const loginDoctor = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { accessToken, refreshToken } = await Doctor.findAndGenerateToken({
-      email: req.body.email,
-      password: req.body.password,
-    });
-    res.json({
-      message: "Login Successfully",
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-    });
   } catch (error) {
     next(error);
   }
