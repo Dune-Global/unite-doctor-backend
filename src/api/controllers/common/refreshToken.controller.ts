@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { decodedPayload } from "../../utils/jwtDecoder";
-import APIError from "../../errors/api-error";
+import { decodedPayload } from "../../../utils/jwtDecoder";
+import APIError from "../../../errors/api-error";
 import httpStatus from "http-status";
-import Doctor from "../../models/doctor.model";
-import { createAccessToken } from "../../utils/generateToken";
+import Doctor from "../../../models/doctor.model";
+import { createAccessToken } from "../../../utils/generateToken";
 
 // Refresh token controller
 export const refresh = async (
