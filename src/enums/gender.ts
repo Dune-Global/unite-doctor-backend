@@ -1,0 +1,23 @@
+export enum Gender {
+    MALE = "Male",
+    FEMALE = "Female",
+    NON_BINARY = "Non-Binary",
+    GENDERQUEER = "Genderqueer",
+    BIGENDER = "Bigender",
+    GENDERFLUID = "Genderfluid",
+    TWO_SPIRIT = "Two-Spirit",
+    PANGENDER = "Pangender",
+    DEMIBOY = "Demiboy",
+    DEMIGIRL = "Demigirl",
+    ANDROGYNE = "Androgyne",
+    NEUTROIS = "Neutrois",
+    GENDER_NONCONFORMING = "Gender Nonconforming",
+    GENDER_QUESTIONING = "Gender Questioning",
+    GENDER_VARIANT = "Gender Variant",
+    TRANSGENDER = "Transgender",
+    CISGENDER = "Cisgender",
+    INTERSEX = "Intersex",
+    OTHER = "Other",
+    PREFER_NOT_TO_SAY = "Prefer Not To Say",
+    ATTACK_HELICOPTER = "Attack Helicopter"
+}
