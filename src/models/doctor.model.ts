@@ -11,6 +11,12 @@ import {
   IDoctorLoginRequest,
   IDoctorSuccessLogin,
 } from "../types";
+import {
+  DoctorDesignation,
+  Gender,
+  SriLankaHospitals,
+  SriLankaUniversities,
+} from "../enums";
 
 import APIError from "../errors/api-error";
 import config from "../config/env";
@@ -20,10 +26,12 @@ const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
     firstName: {
       type: String,
       required: true,
+      match: /^[^\s]+$/,
     },
     lastName: {
       type: String,
       required: true,
+      match: /^[^\s]+$/,
     },
     email: {
       type: String,
@@ -42,6 +50,47 @@ const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
       type: Number,
       required: true,
       unique: true,
+      match: /^\d{10}$/,
+    },
+    designation: {
+      type: String,
+      enum: Object.values(DoctorDesignation),
+    },
+    dateOfBirth: {
+      type: String,
+    },
+    gender: {
+      type: String,
+      enum: Object.values(Gender),
+    },
+    imgUrl: {
+      type: String,
+    },
+    nicNumber: {
+      type: String,
+      unique: true,
+    },
+    clinic: {
+      isClinic: {
+        type: Boolean,
+        default: false,
+      },
+      clinicName: {
+        type: String,
+      },
+      clinicAddress: {
+        type: String,
+      },
+    },
+    currentUniversity: {
+      type: String,
+      enum: Object.values(SriLankaUniversities),
+      required: false,
+    },
+    currentHospital: {
+      type: String,
+      enum: Object.values(SriLankaHospitals),
+      required: false,
     },
     password: {
       type: String,
@@ -85,6 +134,7 @@ doctorSchema.method({
     return await compare(password, pwhash);
   },
 
+  // Transform the doctor response object
   transform(this: mongoose.Document): Partial<ITransformedDoctor> {
     const transformed: Partial<ITransformedDoctor> = {};
     const fields: Array<keyof ITransformedDoctor> = [
@@ -94,8 +144,16 @@ doctorSchema.method({
       "email",
       "slmcNumber",
       "mobile",
-      "isEmailVerified",
+      "designation",
+      "dateOfBirth",
+      "gender",
+      "imgUrl",
+      "nicNumber",
+      "clinic",
+      "currentUniversity",
+      "currentHospital",
       "isSlmcVerified",
+      "isEmailVerified",
     ];
 
     fields.forEach((field) => {
@@ -106,6 +164,7 @@ doctorSchema.method({
   },
 });
 
+// Staitcs
 doctorSchema.statics = {
   // get user by
   // @returns Promise<User, APIError>
@@ -214,7 +273,7 @@ doctorSchema.statics = {
       Object.keys(error.keyValue)[0] === "email"
     ) {
       return new APIError({
-        message: "Validation Error",
+        message: "Email Validation Error",
         errors: [
           {
             field: "email",
@@ -234,7 +293,7 @@ doctorSchema.statics = {
       Object.keys(error.keyValue)[0] === "slmcNumber"
     ) {
       return new APIError({
-        message: "Validation Error",
+        message: "SLMC Validation Error",
         errors: [
           {
             field: "slmcNumber",
@@ -254,7 +313,7 @@ doctorSchema.statics = {
       Object.keys(error.keyValue)[0] === "mobile"
     ) {
       return new APIError({
-        message: "Validation Error",
+        message: "Mobile Number Validation Error",
         errors: [
           {
             field: "mobile",
@@ -267,8 +326,29 @@ doctorSchema.statics = {
       });
     }
 
+    // Check if the NIC is already exists
+    if (
+      error.name === "MongoServerError" &&
+      error.code === 11000 &&
+      Object.keys(error.keyValue)[0] === "nicNumber"
+    ) {
+      return new APIError({
+        message: "NIC Number Validation Error",
+        errors: [
+          {
+            field: "nicNumber",
+            location: "body",
+            messages: ["NIC is already exists"],
+          },
+        ],
+        stack: error.stack,
+        status: httpStatus.CONFLICT,
+      });
+    }
+
     return error;
   },
+
 };
 
 export default mongoose.model<IDoctor, IDoctorModel>("Doctor", doctorSchema);
