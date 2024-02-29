@@ -5,6 +5,7 @@ import httpStatus from "http-status";
 import Doctor from "../../models/doctor.model";
 import { createAccessToken } from "../../utils/generateToken";
 
+// Refresh token controller
 export const refresh = async (
   req: Request,
   res: Response,
