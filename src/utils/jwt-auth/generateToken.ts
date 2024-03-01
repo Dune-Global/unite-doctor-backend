@@ -1,6 +1,6 @@
 import { sign } from "jsonwebtoken";
-import env from "../config/env";
-import { IAccessToken, IRefreshToken } from "types";
+import env from "../../config/env";
+import { IAccessToken, IRefreshToken } from "../../types";
 
 export const createAccessToken = (options: IAccessToken) => {
   return sign(

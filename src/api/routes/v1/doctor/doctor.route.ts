@@ -12,7 +12,14 @@ import {
   allowedDoctorLogiFields,
 } from "../../../../middleware/json-body-validation/allowedDoctorJsonFields";
 import { CustomRequest } from "../../../../types/customRequest";
-import { loginDoctor, registerDoctor } from "../../../controllers/doctor/doctorAuth.controller";
+import {
+  loginDoctor,
+  registerDoctor,
+  activateAccount,
+  sendResetPasswordEmail,
+  validateResetPasswordToken,
+  resetPassword,
+} from "../../../controllers/doctor/doctorAuth.controller";
 
 const router = express.Router();
 
@@ -32,6 +39,7 @@ router.put(
   validateFields,
   updateDoctorDetails
 );
+
 // Auth routes
 router.post("/register", registerDoctor);
 router.post(
@@ -43,5 +51,9 @@ router.post(
   validateFields,
   loginDoctor
 );
+router.get("/activate-account/:token", activateAccount);
+router.post("/send-reset-password-mail", sendResetPasswordEmail);
+router.get("/validate-reset-password-token/:token", validateResetPasswordToken)
+router.patch("/reset-password/:token", resetPassword);
 
 export default router;
