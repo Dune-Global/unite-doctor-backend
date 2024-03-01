@@ -15,4 +15,11 @@ export default {
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
   refreshTokenExpIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
   accessTokenExpIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+  emailUser: process.env.EMAIL_USER,
+  emailAppPassword: process.env.EMAIL_APP_PASSWORD,
+  accountActivationTokenSecret: process.env.ACCOUNT_ACTIVATION_TOKEN_SECRET,
+  accountActivationTokenExpIn: process.env.ACCOUNT_ACTIVATION_TOKEN_EXPIRES_IN,
+  passwordResetTokenSecret: process.env.PASSWORD_RESET_TOKEN_SECRET,
+  passwordResetTokenExpIn: process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN,
+  fontendUrl: process.env.FRONTEND_URL,
 };

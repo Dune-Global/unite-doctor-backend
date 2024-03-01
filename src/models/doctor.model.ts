@@ -20,7 +20,7 @@ import {
 
 import APIError from "../errors/api-error";
 import config from "../config/env";
-import { createAccessToken, createRefreshToken } from "../utils/generateToken";
+import { createAccessToken, createRefreshToken } from "../utils/jwt-auth/generateToken";
 const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
   {
     firstName: {
