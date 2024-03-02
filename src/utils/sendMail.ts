@@ -57,3 +57,29 @@ export const sendAccountActivationMail = async (
 
   return info;
 };
+
+export const sendResetPasswordMail = async (
+  to: string,
+  subjectParam: string,
+  resetPasswordLink: string,
+  firstName: string,
+  lastName: string
+) => {
+  const templatePath = path.join(
+    __dirname,
+    "../mail-templates/reset-password.html"
+  );
+  const source = fs.readFileSync(templatePath, "utf-8").toString();
+  const template = handlebars.compile(source);
+  const replacements = {
+    resetPasswordLink: resetPasswordLink,
+    firstName: firstName,
+    lastName: lastName,
+  };
+  const htmlToSend = template(replacements);
+  const info = await sendEmail(to, subjectParam, htmlToSend);
+
+  console.log("Message sent: %s", info);
+
+  return info;
+};
