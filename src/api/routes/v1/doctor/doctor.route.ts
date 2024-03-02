@@ -4,6 +4,7 @@ import {
   getDoctorById,
   testAuth,
   updateDoctorDetails,
+  updateDoctorPassword,
 } from "../../../controllers/doctor/doctor.controller";
 import { isAuth } from "../../../../middleware/auth";
 import { localVariables } from "../../../../middleware/locals";
@@ -40,6 +41,7 @@ router.put(
   validateFields,
   updateDoctorDetails
 );
+router.patch("/update-password/:doctorId", isAuth, updateDoctorPassword);
 
 // Auth routes
 router.post("/register", registerDoctor);

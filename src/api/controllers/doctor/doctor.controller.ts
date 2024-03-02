@@ -92,3 +92,52 @@ export const updateDoctorDetails = async (
     updatedFieldNames: [""],
   };
 };
+
+// Update doctor password field
+export const updateDoctorPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const doctor = await Doctor.get(req.params.doctorId);
+    const { oldPassword, newPassword } = req.body;
+    if (doctor) {
+      if (await doctor.passwordMatches(oldPassword, doctor.password)) {
+        doctor.password = newPassword;
+        await doctor.save();
+        res.json({
+          message: "Password updated successfully!",
+        });
+      } else {
+        throw new APIError({
+          message: "Password does not match",
+          status: 400,
+          errors: [
+            {
+              field: "Password",
+              location: "body",
+              messages: ["Password does not match"],
+            },
+          ],
+          stack: "",
+        });
+      }
+    } else {
+      throw new APIError({
+        message: "Doctor does not exist",
+        status: 404,
+        errors: [
+          {
+            field: "Doctor",
+            location: "body",
+            messages: ["Doctor does not exist"],
+          },
+        ],
+        stack: "",
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
