@@ -2,7 +2,7 @@ import { generateResetPasswordToken } from "./../../../utils/resetPasswordToken"
 import { Request, Response, NextFunction } from "express";
 import Doctor from "../../../models/doctor.model";
 import { defaultProfileImage } from "../../../utils/defaultProfileImage";
-import { sendAccountActivationMail } from "../../../utils/sendMail";
+import { sendAccountActivationMail, sendResetPasswordMail } from "../../../utils/sendMail";
 import {
   decodeAccountActivationToken,
   generateAccountActivationToken,
@@ -166,7 +166,7 @@ export const sendResetPasswordEmail = async (
       id: doctor.id,
     });
 
-    const mailSendDetails = await sendAccountActivationMail(
+    const mailSendDetails = await sendResetPasswordMail(
       doctor.email,
       "Account Activation",
       `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}/rp?${resetPasswordToken}`,
