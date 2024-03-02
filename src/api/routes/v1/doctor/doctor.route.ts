@@ -6,6 +6,7 @@ import {
   updateDoctorDetails,
 } from "../../../controllers/doctor/doctor.controller";
 import { isAuth } from "../../../../middleware/auth";
+import { localVariables } from "../../../../middleware/locals";
 import { validateFields } from "../../../../middleware/json-body-validation/bodyFieldsValidate";
 import {
   allowedUpdateDoctorFields,
@@ -52,8 +53,12 @@ router.post(
   loginDoctor
 );
 router.get("/activate-account/:token", activateAccount);
-router.post("/send-reset-password-mail", sendResetPasswordEmail);
-router.get("/validate-reset-password-token/:token", validateResetPasswordToken)
+router.post(
+  "/send-reset-password-mail",
+  localVariables,
+  sendResetPasswordEmail
+);
+router.get("/validate-reset-password-token/:token", validateResetPasswordToken);
 router.patch("/reset-password/:token", resetPassword);
 
 export default router;

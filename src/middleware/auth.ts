@@ -5,36 +5,33 @@ import { verify } from "jsonwebtoken";
 import env from "../config/env";
 import { IAccessToken } from "../types";
 
-export const isAuth = (
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-) => {
+export const isAuth = (req: Request, _res: Response, next: NextFunction) => {
   const authorization = req.headers["authorization"];
-if (!authorization) {
+  if (!authorization) {
     next(
-        new APIError({
-            message: "Unauthorized",
-            stack: "",
-            status: httpStatus.UNAUTHORIZED,
-            errors: [
-                {
-                    field: "Authorization",
-                    location: "Header",
-                    messages: ["Authorization Header Missing"],
-                },
-            ],
-        })
+      new APIError({
+        message: "Unauthorized",
+        stack: "",
+        status: httpStatus.UNAUTHORIZED,
+        errors: [
+          {
+            field: "Authorization",
+            location: "Header",
+            messages: ["Authorization Header Missing"],
+          },
+        ],
+      })
     );
-}
+  }
 
-try {
+  try {
     const token = authorization?.split(" ")[1];
-    const payload: IAccessToken = verify(token!, env.accessTokenSecret!) as IAccessToken;
+    const payload: IAccessToken = verify(
+      token!,
+      env.accessTokenSecret!
+    ) as IAccessToken;
     console.log(payload);
-
-    
-} catch (err) {
+  } catch (err) {
     next(
       new APIError({
         message: err.message,

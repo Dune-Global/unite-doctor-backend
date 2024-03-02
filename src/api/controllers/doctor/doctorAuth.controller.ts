@@ -128,6 +128,8 @@ export const sendResetPasswordEmail = async (
   next: NextFunction
 ) => {
   try {
+    req.app.locals.resetSession = true; // session start
+    req.app.locals.id;
     let resetPasswordTokenDetails: string;
     const { email } = req.body;
     if (!email) {
@@ -157,6 +159,8 @@ export const sendResetPasswordEmail = async (
         stack: "",
       });
     }
+
+    req.app.locals.id = doctor.id;
 
     const resetPasswordToken = generateResetPasswordToken({
       id: doctor.id,
@@ -196,9 +200,28 @@ export const validateResetPasswordToken = async (
     const { token } = req.params;
     const decodedToken = decodeResetPasswordToken(token as string);
     const doctor = await Doctor.get(decodedToken.id);
+    if (
+      req.app.locals.resetSession === false ||
+      doctor.id != req.app.locals.id
+    ) {
+      throw new APIError({
+        message: "Unauthorized",
+        status: 401,
+        errors: [
+          {
+            field: "Authorization",
+            location: "Header",
+            messages: ["Unauthorized"],
+          },
+        ],
+        stack: "",
+      });
+    }
 
     if (doctor) {
-      res.json({
+      req.app.locals.resetSession = true;
+      req.app.locals.isAuth = true;
+      return res.json({
         message: "Authenticated reset password token!",
       });
     }
@@ -216,7 +239,7 @@ export const validateResetPasswordToken = async (
       stack: "",
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -227,6 +250,24 @@ export const resetPassword = async (
   next: NextFunction
 ) => {
   try {
+    if (
+      req.app.locals.resetSession === false ||
+      req.app.locals.isAuth === false
+    ) {
+      throw new APIError({
+        message: "Unauthorized",
+        status: 401,
+        errors: [
+          {
+            field: "Authorization",
+            location: "Header",
+            messages: ["Unauthorized"],
+          },
+        ],
+        stack: "",
+      });
+    }
+
     const { token } = req.params;
     const { newPassword } = req.body;
     const decodedToken = decodeResetPasswordToken(token as string);
@@ -262,9 +303,15 @@ export const resetPassword = async (
           stack: "",
         });
       }
+
       doctor.password = newPassword;
       await doctor.save();
-      res.json({
+
+      req.app.locals.isAuth = false;
+      req.app.locals.resetSession = false;
+      req.app.locals.id = "";
+
+      return res.json({
         message: "Password reset successfully!",
       });
     }
@@ -282,6 +329,6 @@ export const resetPassword = async (
       stack: "",
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

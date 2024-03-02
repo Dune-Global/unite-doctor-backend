@@ -22,4 +22,5 @@ export default {
   passwordResetTokenSecret: process.env.PASSWORD_RESET_TOKEN_SECRET,
   passwordResetTokenExpIn: process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN,
   fontendUrl: process.env.FRONTEND_URL,
+  isSession: process.env.IS_SESSION as unknown as boolean,
 };
