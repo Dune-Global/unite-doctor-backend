@@ -1,0 +1,32 @@
+name: Linux_Container_Workflow
+on:
+    push:
+      branches:
+        - main
+jobs:
+    build-and-deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - name: "Checkout GitHub Action 🚀"
+          uses: actions/checkout@main
+    
+        - name: "Login via Azure CLI 🔑"
+          uses: azure/login@v1
+          with:
+            creds: |
+                {
+                    "clientSecret": ${{ secrets.AZURE_CLIENT_SECRET }},
+                    "subscriptionId":  ${{ secrets.SUBSCRIPTION_ID }},
+                    "tenantId":  ${{ secrets.AZURE_TENENT_ID }},
+                    "clientId":  ${{ secrets.AZURE_CLIENT_ID }}
+                }
+                  
+        - name: "Build and push image 🚢"
+          uses: azure/docker-login@v1
+          with:
+            login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+            username: ${{ secrets.UniteBackend }}
+            password: ${{ secrets.ACR_PASSWORD }}
+        - run: |
+            docker build . -t ${{ secrets.ACR_LOGIN_SERVER }}/unite-backend-dev:latest
+            docker push ${{ secrets.ACR_LOGIN_SERVER }}/unite-backend-dev:latest
