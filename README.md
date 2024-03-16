@@ -7,7 +7,7 @@
 
 <div align="center">
   
-[![Commitlint](https://github.com/Dune-Global/unite-doctor-backend/actions/workflows/quality-check.yaml/badge.svg)](https://github.com/Dune-Global/unite-doctor-backend/actions/workflows/quality-check.yaml)
+
 </div>
 
 > [!IMPORTANT]
