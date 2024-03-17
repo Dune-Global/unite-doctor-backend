@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import Doctor from "../../../models/doctor.model";
-import { ITransformedDoctor, IDoctorUpdateSuccess } from "../../../types";
+import Patient from "../../../models/patient.model";
+import { ITransformedPatient, IPatientUpdateSuccess } from "../../../types";
 import APIError from "../../../errors/api-error";
-import { decodedDoctorPayload } from "./../../../utils/jwt-auth/jwtDecoder";
+import { decodedPatientPayload } from "./../../../utils/jwt-auth/jwtDecoder";
 
 // Test auth
 export const testAuth = async (
@@ -19,76 +19,79 @@ export const testAuth = async (
   }
 };
 
-// Get the list of doctors
-export const getDoctors = async (
+// Get the list of patient
+export const getPatient = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const doctors = await Doctor.list(req.query);
-    const transformedDoctors = doctors.map((doctor: ITransformedDoctor) =>
-      doctor.transform()
+    const patient = await Patient.list(req.query);
+    const transformedPatient = patient.map((patient: ITransformedPatient) =>
+      patient.transform()
     );
-    res.json(transformedDoctors);
+    res.json(transformedPatient);
   } catch (error) {
     next(error);
   }
 };
 
-// Get doctor by ID
-export const getDoctorById = async (
+// Get patient by ID
+export const getPatientById = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const doctor = await Doctor.get(req.params.doctorId);
-    res.json(doctor.transform());
+    const patient = await Patient.get(req.params.patientId);
+    console.log(patient);
+    res.json(patient.transform());
   } catch (error) {
     next(error);
   }
 };
 
 // Update additional details
-export const updateDoctorDetails = async (
+export const updatePatientDetails = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<IDoctorUpdateSuccess> => {
+): Promise<IPatientUpdateSuccess> => {
   try {
-    const token = req.headers["authorization"]?.split(" ")[1];
-    const decoded = decodedDoctorPayload(token as string);
-    const doctor = await Doctor.get(decoded.id);
     const updateFields = req.body;
+    const token = req.headers["authorization"]?.split(" ")[1];
+    console.log(token);
+    const decodedToken = decodedPatientPayload(token as string);
+    console.log(decodedToken);
+    const patient = await Patient.get(decodedToken.id);
 
-    if (doctor) {
+    if (patient) {
       try {
-        doctor.set(updateFields);
-        await doctor.save();
+        patient.set(updateFields);
+        await patient.save();
         res.json({
-          message: "Doctor updated successfully!",
+          message: "Patient updated successfully!",
           updatedFieldNames: Object.keys(updateFields),
         });
       } catch (error) {
-        next(Doctor.checkDuplicateFields(error));
+        next(Patient.checkDuplicateFields(error));
       }
     }
 
     throw new APIError({
-      message: "Doctor does not exist",
+      message: "Patient does not exist",
       status: 404,
       errors: [
         {
-          field: "Doctor",
+          field: "Patient",
           location: "body",
-          messages: ["Doctor does not exist"],
+          messages: ["Patient does not exist"],
         },
       ],
       stack: "",
     });
   } catch (error) {
-    next(Doctor.checkDuplicateFields(error));
+    next(Patient.checkDuplicateFields(error));
   }
   return {
     message: "",
@@ -96,21 +99,21 @@ export const updateDoctorDetails = async (
   };
 };
 
-// Update doctor password field
-export const updateDoctorPassword = async (
+// Update patient password field
+export const updatePatientPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
-    const decoded = decodedDoctorPayload(token as string);
-    const doctor = await Doctor.get(decoded.id);
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
     const { oldPassword, newPassword } = req.body;
-    if (doctor) {
-      if (await doctor.passwordMatches(oldPassword, doctor.password)) {
-        doctor.password = newPassword;
-        await doctor.save();
+    if (patient) {
+      if (await patient.passwordMatches(oldPassword, patient.password)) {
+        patient.password = newPassword;
+        await patient.save();
         res.json({
           message: "Password updated successfully!",
         });
@@ -130,13 +133,13 @@ export const updateDoctorPassword = async (
       }
     } else {
       throw new APIError({
-        message: "Doctor does not exist",
+        message: "Patient does not exist",
         status: 404,
         errors: [
           {
-            field: "Doctor",
+            field: "Patient",
             location: "body",
-            messages: ["Doctor does not exist"],
+            messages: ["Patient does not exist"],
           },
         ],
         stack: "",

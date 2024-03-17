@@ -20,7 +20,10 @@ import {
 
 import APIError from "../errors/api-error";
 import config from "../config/env";
-import { createAccessToken, createRefreshToken } from "../utils/jwt-auth/generateToken";
+import {
+  createDoctorAccessToken,
+  createDoctorRefreshToken,
+} from "../utils/jwt-auth/generateToken";
 const doctorSchema = new mongoose.Schema<IDoctor, IDoctorModel, IDoctorMethods>(
   {
     firstName: {
@@ -217,14 +220,16 @@ doctorSchema.statics = {
     if (options.password) {
       if (doctor) {
         if (await doctor.passwordMatches(options.password, doctor?.password)) {
-          const accessToken = createAccessToken({
+          const accessToken = createDoctorAccessToken({
             id: doctor.id,
             email: doctor.email,
             isEmailVerified: doctor.isEmailVerified,
             isSlmcVerified: doctor.isSlmcVerified,
+            designation: doctor.designation,
+            imgUrl: doctor.imgUrl,
           });
 
-          const refreshToken = createRefreshToken({
+          const refreshToken = createDoctorRefreshToken({
             id: doctor.id,
           });
 
@@ -348,7 +353,6 @@ doctorSchema.statics = {
 
     return error;
   },
-
 };
 
 export default mongoose.model<IDoctor, IDoctorModel>("Doctor", doctorSchema);

@@ -1,10 +1,10 @@
 import { generateResetPasswordToken } from "./../../../utils/resetPasswordToken";
 import { Request, Response, NextFunction } from "express";
-import Doctor from "../../../models/doctor.model";
+import Patient from "../../../models/patient.model";
 import { defaultProfileImage } from "../../../utils/defaultProfileImage";
 import {
-  sendDoctorAccountActivationMail,
-  sendDoctorResetPasswordMail,
+  sendPatientAccountActivationMail,
+  sendPatientResetPasswordMail,
 } from "../../../utils/sendMail";
 import {
   decodeAccountActivationToken,
@@ -13,10 +13,10 @@ import {
 import env from "../../../config/env";
 import APIError from "../../../errors/api-error";
 import { decodeResetPasswordToken } from "../../../utils/resetPasswordToken";
-import { decodedDoctorPayload } from "../../../utils/jwt-auth/jwtDecoder";
+import { decodedPatientPayload } from "./../../../utils/jwt-auth/jwtDecoder";
 
-// Register a new doctor
-export const registerDoctor = async (
+// Register a new patient
+export const registerPatient = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -28,23 +28,25 @@ export const registerDoctor = async (
 
     const constructedImgUrl = defaultProfileImage(firstName, lastName);
 
-    const doctor = new Doctor({
+    const patient = new Patient({
       firstName,
       lastName,
       imgUrl: constructedImgUrl,
       ...otherFields,
     });
 
-    const savedDoctor = await doctor.save();
+    const savedPatient = await patient.save();
+
     const accountActivationToken = generateAccountActivationToken({
-      id: savedDoctor.id,
+      id: savedPatient.id,
     });
-    const mailSendDetails = await sendDoctorAccountActivationMail(
-      savedDoctor.email,
+
+    const mailSendDetails = await sendPatientAccountActivationMail(
+      savedPatient.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${savedDoctor.firstName}${savedDoctor.lastName}/at?${accountActivationToken}`,
-      savedDoctor.firstName,
-      savedDoctor.lastName
+      `${env.fontendUrl}activate-account/${savedPatient.firstName}${savedPatient.lastName}/at?${accountActivationToken}`,
+      savedPatient.firstName,
+      savedPatient.lastName
     );
 
     if (env.isDev) {
@@ -55,7 +57,7 @@ export const registerDoctor = async (
     }
 
     res.json({
-      data: savedDoctor.transform(),
+      data: savedPatient.transform(),
       emailConfirmation: {
         message: "An email has been sent to your email address",
         data: mailSendDetails,
@@ -64,7 +66,7 @@ export const registerDoctor = async (
     });
   } catch (error) {
     console.error(error.code);
-    next(Doctor.checkDuplicateFields(error));
+    next(Patient.checkDuplicateFields(error));
   }
 };
 
@@ -75,25 +77,25 @@ export const getVerifyEmail = async (
 ) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
-    const decodedToken = decodedDoctorPayload(token as string);
-    const doctor = await Doctor.get(decodedToken.id);
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
 
-    if (doctor.isEmailVerified === true) {
+    if (patient.isEmailVerified === true) {
       res.json({
         message: "Email already verified",
       });
     } else {
       let accountActivationTokenDetails: string;
       const accountActivationToken = generateAccountActivationToken({
-        id: doctor.id,
+        id: patient.id,
       });
 
-      const mailSendDetails = await sendDoctorAccountActivationMail(
-        doctor.email,
+      const mailSendDetails = await sendPatientAccountActivationMail(
+        patient.email,
         "Account Activation",
-        `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}/at?${accountActivationToken}`,
-        doctor.firstName,
-        doctor.lastName
+        `${env.fontendUrl}activate-account/${patient.firstName}${patient.lastName}/at?${accountActivationToken}`,
+        patient.firstName,
+        patient.lastName
       );
 
       if (env.isDev) {
@@ -104,7 +106,7 @@ export const getVerifyEmail = async (
       }
 
       res.json({
-        data: doctor.transform(),
+        data: patient.transform(),
         emailConfirmation: {
           message: "An email has been sent to your email address",
           data: mailSendDetails,
@@ -117,14 +119,14 @@ export const getVerifyEmail = async (
   }
 };
 
-// Doctor login
-export const loginDoctor = async (
+// Patient login
+export const loginPatient = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { accessToken, refreshToken } = await Doctor.findAndGenerateToken({
+    const { accessToken, refreshToken } = await Patient.findAndGenerateToken({
       email: req.body.email,
       password: req.body.password,
     });
@@ -147,24 +149,24 @@ export const activateAccount = async (
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     const decodedToken = decodeAccountActivationToken(token as string);
-    const doctor = await Doctor.get(decodedToken.id);
+    const patient = await Patient.get(decodedToken.id);
 
-    if (doctor) {
-      doctor.isEmailVerified = true;
-      await doctor.save();
+    if (patient) {
+      patient.isEmailVerified = true;
+      await patient.save();
       res.json({
         message: "Account activated successfully!",
       });
     }
 
     throw new APIError({
-      message: "Doctor does not exist",
+      message: "Patient does not exist",
       status: 404,
       errors: [
         {
-          field: "Doctor",
+          field: "Patient",
           location: "body",
-          messages: ["Doctor does not exist"],
+          messages: ["Patient does not exist"],
         },
       ],
       stack: "",
@@ -194,37 +196,37 @@ export const sendResetPasswordEmail = async (
       });
     }
 
-    const doctor = await Doctor.findOne({
+    const patient = await Patient.findOne({
       email: email,
     });
 
-    if (!doctor) {
+    if (!patient) {
       throw new APIError({
-        message: "Doctor does not exist",
+        message: "Patient does not exist",
         status: 404,
         errors: [
           {
-            field: "Doctor",
+            field: "Patient",
             location: "body",
-            messages: ["Doctor does not exist"],
+            messages: ["Patient does not exist"],
           },
         ],
         stack: "",
       });
     }
 
-    req.app.locals.id = doctor.id;
+    req.app.locals.id = patient.id;
 
     const resetPasswordToken = generateResetPasswordToken({
-      id: doctor.id,
+      id: patient.id,
     });
 
-    const mailSendDetails = await sendDoctorResetPasswordMail(
-      doctor.email,
+    const mailSendDetails = await sendPatientResetPasswordMail(
+      patient.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}/rp?${resetPasswordToken}`,
-      doctor.firstName,
-      doctor.lastName
+      `${env.fontendUrl}activate-account/${patient.firstName}${patient.lastName}/rp?${resetPasswordToken}`,
+      patient.firstName,
+      patient.lastName
     );
 
     if (env.isDev) {
@@ -252,10 +254,10 @@ export const validateResetPasswordToken = async (
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     const decodedToken = decodeResetPasswordToken(token as string);
-    const doctor = await Doctor.get(decodedToken.id);
+    const patient = await Patient.get(decodedToken.id);
     if (
       req.app.locals.resetSession === false ||
-      doctor.id != req.app.locals.id
+      patient.id != req.app.locals.id
     ) {
       throw new APIError({
         message: "Unauthorized",
@@ -271,22 +273,22 @@ export const validateResetPasswordToken = async (
       });
     }
 
-    if (doctor) {
+    if (patient) {
       req.app.locals.resetSession = true;
-      req.app.locals.isAuthDoctor = true;
+      req.app.locals.isAuthPatient = true;
       return res.json({
         message: "Authenticated reset password token!",
       });
     }
 
     throw new APIError({
-      message: "Doctor does not exist",
+      message: "Patient does not exist",
       status: 404,
       errors: [
         {
-          field: "Doctor",
+          field: "Patient",
           location: "body",
-          messages: ["Doctor does not exist"],
+          messages: ["Patient does not exist"],
         },
       ],
       stack: "",
@@ -305,7 +307,7 @@ export const resetPassword = async (
   try {
     if (
       req.app.locals.resetSession === false ||
-      req.app.locals.isAuthDoctor === false
+      req.app.locals.isAuthPatient === false
     ) {
       throw new APIError({
         message: "Unauthorized",
@@ -324,7 +326,7 @@ export const resetPassword = async (
     const token = req.headers["authorization"]?.split(" ")[1];
     const { newPassword } = req.body;
     const decodedToken = decodeResetPasswordToken(token as string);
-    const doctor = await Doctor.get(decodedToken.id);
+    const patient = await Patient.get(decodedToken.id);
 
     if (!newPassword) {
       throw new APIError({
@@ -341,8 +343,8 @@ export const resetPassword = async (
       });
     }
 
-    if (doctor) {
-      if (doctor.password === newPassword) {
+    if (patient) {
+      if (patient.password === newPassword) {
         throw new APIError({
           message: "Password cannot be the same as the current password",
           status: 400,
@@ -357,10 +359,10 @@ export const resetPassword = async (
         });
       }
 
-      doctor.password = newPassword;
-      await doctor.save();
+      patient.password = newPassword;
+      await patient.save();
 
-      req.app.locals.isAuthDoctor = false;
+      req.app.locals.isAuthPatient = false;
       req.app.locals.resetSession = false;
       req.app.locals.id = "";
 
@@ -370,13 +372,13 @@ export const resetPassword = async (
     }
 
     throw new APIError({
-      message: "Doctor does not exist",
+      message: "Patient does not exist",
       status: 404,
       errors: [
         {
-          field: "Doctor",
+          field: "Patient",
           location: "body",
-          messages: ["Doctor does not exist"],
+          messages: ["Patient does not exist"],
         },
       ],
       stack: "",
