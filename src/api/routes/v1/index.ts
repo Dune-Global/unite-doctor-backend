@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import doctorRouter from "./doctor/doctor.route";
-import refreshRouter from "./common/refreshToken.route";
+import patientRouter from "./patient/patient.router";
 import enumsRouter from "./common/enums.route";
 const router = express.Router();
 
@@ -11,7 +11,7 @@ router.get("/tryme", (_req: Request, res: Response) => {
 
 // Plug the router into the express app
 router.use("/doctor", doctorRouter);
-router.use("/token", refreshRouter);
+router.use("/patient",patientRouter);
 
 // common routes
 router.use("/common", enumsRouter);

@@ -7,7 +7,7 @@ export const localVariables = (
 ) => {
   req.app.locals = {
     id: "",
-    isAuth: false,
+    isAuthDoctor: false,
     resetSession: false,
   };
   next();
