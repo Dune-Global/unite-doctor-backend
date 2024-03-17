@@ -34,3 +34,13 @@ export { IAccountActivationToken } from "./accountActivationToken";
 
 // Reset password token
 export { IResetPasswordToken } from "./resetPasswordToken";
+
+// Patient session
+export {
+  DoctorAccess,
+  Medicine,
+  Report,
+  ReportAccess,
+  Session,
+  PatientSession,
+} from "./patientSession";
