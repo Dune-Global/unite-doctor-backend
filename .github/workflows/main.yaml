@@ -24,5 +24,57 @@ jobs:
 
       - name: "Build and push image with Docker envs 🛠️"
         run: |
-          docker build . -t ${{ secrets.ACR_LOGIN_SERVER }}/unite-backend-dev:latest
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/unite-backend-dev:latest
+          docker build . -t ${{ secrets.ACR_LOGIN_SERVER }}/${{secrets.CONTAINER_NAME}}:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{secrets.CONTAINER_NAME}}:latest
+
+  VM-service:
+      runs-on: ubuntu-latest
+      needs: build-and-deploy
+      steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v2
+  
+        - name: Connect to VM and Install Dependencies
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.VM_HOST }}
+            username: ${{ secrets.VM_USERNAME }}
+            password: ${{ secrets.VM_PASSWORD }}
+            script: |
+              ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+              sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} 'sudo apt update && sudo apt install -y nodejs npm docker.io'
+        
+        - name: Stop Docker Container on Port 3001 & Delete the previous image
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.VM_HOST }}
+            username: ${{ secrets.VM_USERNAME }}
+            password: ${{ secrets.VM_PASSWORD }}
+            script: |
+              ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+              CONTAINER_ID=$(sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} 'sudo docker ps -q --filter "ancestor=${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.CONTAINER_NAME }}" --filter "publish=8080/tcp"')
+              if [ -n "$CONTAINER_ID" ]; then
+                  echo "Stopping Docker container running on port 8080..."
+                  sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} "sudo docker stop $CONTAINER_ID"
+              else
+                  echo "No container found running on port 3001"
+              fi
+              sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} "sudo docker rmi -f ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.CONTAINER_NAME }}:latest"
+        - name: Connect to VM and Pull Image
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.VM_HOST }}
+            username: ${{ secrets.VM_USERNAME }}
+            password: ${{ secrets.VM_PASSWORD }}
+            script: |
+              ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+              sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} 'sudo docker login -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }} ${{ secrets.ACR_LOGIN_SERVER }} && sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.CONTAINER_NAME }}:latest'
+        - name: Connect to VM and Start Docker Container
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.VM_HOST }}
+            username: ${{ secrets.VM_USERNAME }}
+            password: ${{ secrets.VM_PASSWORD }}
+            script: |
+              ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+              sshpass -p ${{ secrets.VM_PASSWORD }} ssh ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} 'sudo docker run -d -p 8080:8080 --restart=always ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.CONTAINER_NAME }}:latest'
