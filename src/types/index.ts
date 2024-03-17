@@ -15,8 +15,19 @@ export {
   IDoctorUpdateSuccess,
 } from "./doctor";
 
+export {
+  IPatient,
+  IPatientMethods,
+  ITransformedPatient,
+  IPatientModel,
+  IPatientLoginRequest,
+  IPatientSuccessLogin,
+  IPatientUpdatableFields,
+  IPatientUpdateSuccess,
+} from "./patient";
+
 // JWT
-export { IAccessToken, IRefreshToken } from "./jwt";
+export { IDoctorAccessToken, IRefreshToken, IPatientAccessToken } from "./jwt";
 
 // Account activation token
 export { IAccountActivationToken } from "./accountActivationToken";
