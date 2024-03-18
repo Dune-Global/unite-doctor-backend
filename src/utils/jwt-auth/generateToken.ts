@@ -6,6 +6,8 @@ export const createDoctorAccessToken = (options: IDoctorAccessToken) => {
   return sign(
     {
       id: options?.id,
+      firstName: options?.firstName,
+      lastName: options?.lastName,
       email: options?.email,
       isEmailVerified: options?.isEmailVerified,
       isSlmcVerified: options?.isSlmcVerified,
@@ -35,6 +37,8 @@ export const createPatientAccessToken = (options: IPatientAccessToken) => {
   return sign(
     {
       id: options?.id,
+      firstName: options?.firstName,
+      lastName: options?.lastName,
       email: options?.email,
       isEmailVerified: options?.isEmailVerified,
       imgUrl: options?.imgUrl,
