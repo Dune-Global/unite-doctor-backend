@@ -33,11 +33,13 @@ export const refreshDoctor = async (
     const result = decodedDoctorPayload(refreshToken);
 
     const doctorId: string = Object.values(result)[0];
-    const { email, isSlmcVerified, isEmailVerified, imgUrl, designation } =
+    const { email, isSlmcVerified, isEmailVerified, imgUrl, designation, firstName,lastName } =
       await Doctor.get(doctorId);
 
     const accessToken = createDoctorAccessToken({
       id: doctorId,
+      firstName: firstName,
+      lastName: lastName,
       email: email,
       isEmailVerified: isEmailVerified,
       isSlmcVerified: isSlmcVerified,
@@ -75,10 +77,12 @@ export const refreshPatient = async (
     const result = decodedPatientPayload(refreshToken);
 
     const patientId: string = Object.values(result)[0];
-    const { email, isEmailVerified, imgUrl } = await Patient.get(patientId);
+    const { email, isEmailVerified, imgUrl, firstName, lastName } = await Patient.get(patientId);
 
     const accessToken = createPatientAccessToken({
       id: patientId,
+      firstName: firstName,
+      lastName: lastName,
       email: email,
       isEmailVerified: isEmailVerified,
       imgUrl: imgUrl,
