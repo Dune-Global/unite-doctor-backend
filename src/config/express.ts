@@ -11,7 +11,11 @@ const app = express();
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(cors());
+app.use(cors(
+    {
+        origin: "http://localhost:3000",
+    }
+));
 
 // mount routes
 app.use("/api/v1", v1);

@@ -60,9 +60,7 @@ export const updatePatientDetails = async (
   try {
     const updateFields = req.body;
     const token = req.headers["authorization"]?.split(" ")[1];
-    console.log(token);
     const decodedToken = decodedPatientPayload(token as string);
-    console.log(decodedToken);
     const patient = await Patient.get(decodedToken.id);
 
     if (patient) {
