@@ -1,11 +1,9 @@
-import { decode, verify } from "jsonwebtoken";
-import env from "../../config/env";
+import { decode } from "jsonwebtoken";
 import { IRefreshToken } from "types";
 
 export const decodedDoctorPayload = (token: string): IRefreshToken => {
-  const payload: IRefreshToken = verify(
-    token,
-    env.doctorRefreshTokenSecret!
+  const payload: IRefreshToken = decode(
+    token
   ) as IRefreshToken;
   return payload;
 };
