@@ -206,6 +206,8 @@ patientSchema.statics = {
         ) {
           const accessToken = createPatientAccessToken({
             id: patient.id,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
             email: patient.email,
             isEmailVerified: patient.isEmailVerified,
             imgUrl: patient.imgUrl,
