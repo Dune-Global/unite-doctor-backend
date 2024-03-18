@@ -54,6 +54,7 @@ const patientSessionSchema = new Schema<PatientSession>({
     default: [],
   },
   allowedReportsToViewByThisDoctor: { type: [reportAccessSchema], default: [] },
+  doctorLastAccessedDate: { type: Date, default: null },
 });
 
 export default mongoose.model<PatientSession>(

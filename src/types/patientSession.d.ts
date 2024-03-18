@@ -40,4 +40,5 @@ export interface PatientSession extends Document {
   prescription: Session[];
   allowedDoctorsToViewThisDoctorsSessionDetails: DoctorAccess[];
   allowedReportsToViewByThisDoctor: ReportAccess[];
+  doctorLastAccessedDate ?: Date;
 }
