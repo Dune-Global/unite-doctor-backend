@@ -222,6 +222,8 @@ doctorSchema.statics = {
         if (await doctor.passwordMatches(options.password, doctor?.password)) {
           const accessToken = createDoctorAccessToken({
             id: doctor.id,
+            firstName: doctor.firstName,
+            lastName: doctor.lastName,
             email: doctor.email,
             isEmailVerified: doctor.isEmailVerified,
             isSlmcVerified: doctor.isSlmcVerified,
