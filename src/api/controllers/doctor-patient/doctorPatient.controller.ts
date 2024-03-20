@@ -19,13 +19,29 @@ export const connectPatientDoc = async (
     const patient = await Patient.get(decodedToken.id);
     const doctor = await Doctor.get(req.params.doctorId);
 
+    // Check if the doctor exists
+    if (!doctor) {
+      throw new APIError({
+        message: `Invalid QR code`,
+        status: 400,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Invalid QR code`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
     // Check if a session already exists
     const existingSession = await PatientSession.findOne({
       patient: patient,
       doctor: doctor,
     });
 
-    if (existingSession) {
+    if (existingSession && existingSession.status === "connected") {
       // If a session already exists, return a message
       throw new APIError({
         message: `Already Connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
@@ -40,6 +56,14 @@ export const connectPatientDoc = async (
           },
         ],
         stack: "",
+      });
+    } else if (existingSession && existingSession.status === "disconnected") {
+      // If a session already exists, update the status to connected
+      await PatientSession.findByIdAndUpdate(existingSession._id, {
+        status: "connected",
+      });
+      res.status(200).json({
+        message: `Connected to Dr. ${doctor.firstName} ${doctor.lastName} successfully`,
       });
     }
 
@@ -58,6 +82,69 @@ export const connectPatientDoc = async (
   }
 };
 
+export const disconnectPatientDoc = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+    const doctor = await Doctor.get(req.params.doctorId);
+
+    // Check if the doctor exists
+    if (!doctor) {
+      throw new APIError({
+        message: `Invalid QR code`,
+        status: 400,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Invalid QR code`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Check if a session already exists
+    const existingSession = await PatientSession.findOne({
+      patient: patient,
+      doctor: doctor,
+      status: "connected",
+    });
+
+    if (!existingSession) {
+      throw new APIError({
+        message: `Not connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
+        status: 404,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [
+              `Not connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    await PatientSession.findByIdAndUpdate(existingSession._id, {
+      status: "disconnected",
+    });
+
+    res.status(200).json({
+      message: `Disconnected from Dr. ${doctor.firstName} ${doctor.lastName} successfully`,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const addPrescription = async (req: Request, res: Response) => {
   const { prescription } = req.body;
   const token = req.headers.authorization?.split(" ")[1];
@@ -72,6 +159,7 @@ export const addPrescription = async (req: Request, res: Response) => {
     const session = await PatientSession.findOne({
       doctor: doctor._id,
       patient: patient._id,
+      status: "connected",
     });
 
     if (!session) {
@@ -118,7 +206,7 @@ export const getDoctorPatientDetail = async (req: Request, res: Response) => {
 
     if (doctor) {
       session = await PatientSession.findOneAndUpdate(
-        { _id: patientSessionId, doctor: doctor._id },
+        { _id: patientSessionId, doctor: doctor._id, status: "connected" },
         { doctorLastAccessedDate: new Date() },
         { new: true }
       );
@@ -173,6 +261,7 @@ export const getConnectedPatients = async (req: Request, res: Response) => {
     const response = connectedPatients.map((session) => ({
       sessionId: session._id,
       patient: session.patient,
+      status: "connected",
     }));
 
     res.status(200).json(response);
@@ -197,7 +286,10 @@ export const getConnectedDoctors = async (req: Request, res: Response) => {
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
-    const connectedDoctors = await PatientSession.find({ patient: patient }).populate('doctor');
+
+    const connectedDoctors = await PatientSession.find({
+      patient: patient,
+    }).populate("doctor");
 
     const response = connectedDoctors.map((session) => ({
       sessionId: session._id,
@@ -209,6 +301,7 @@ export const getConnectedDoctors = async (req: Request, res: Response) => {
         email: session.doctor.email,
         doctorLastAccessedDate: session.doctorLastAccessedDate,
       },
+      status: session.status,
     }));
 
     res.status(200).json(response);

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Doctor from "../../../models/doctor.model";
+import Patient from "../../../models/patient.model";
+import PatientSession from "../../../models/patientSession.model";
 import { ITransformedDoctor, IDoctorUpdateSuccess } from "../../../types";
 import APIError from "../../../errors/api-error";
 import { decodedDoctorPayload } from "./../../../utils/jwt-auth/jwtDecoder";
@@ -31,20 +33,6 @@ export const getDoctors = async (
       doctor.transform()
     );
     res.json(transformedDoctors);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get doctor by ID
-export const getDoctorById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const doctor = await Doctor.get(req.params.doctorId);
-    res.json(doctor.transform());
   } catch (error) {
     next(error);
   }
@@ -137,6 +125,99 @@ export const updateDoctorPassword = async (
             field: "Doctor",
             location: "body",
             messages: ["Doctor does not exist"],
+          },
+        ],
+        stack: "",
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get doctor by ID
+export const getDoctorById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  const decodedToken = decodedDoctorPayload(token as string);
+  try {
+    const userId = decodedToken.id;
+    const doctor = await Doctor.findOne({ _id: userId });
+    const patient = await Patient.findOne({ _id: userId });
+
+    let session;
+
+    if (doctor) {
+      if (doctor._id.toString() !== req.params.doctorId) {
+        throw new APIError({
+          message: "You are not authorized to access this doctor",
+          status: 401,
+          errors: [
+            {
+              field: "Doctor",
+              location: "params",
+              messages: ["You are not authorized to access this doctor"],
+            },
+          ],
+          stack: "",
+        });
+      }
+      res.json(doctor.transform());
+    } else if (patient) {
+      const reqDoctor = await Doctor.findOne({
+        _id: req.params.doctorId,
+      }).select("-__v -dateOfBirth -nicNumber -password -isEmailVerified");
+
+      // Check if the doctor exists
+      if (!reqDoctor) {
+        throw new APIError({
+          message: `Doctor not found`,
+          status: 404,
+          errors: [
+            {
+              field: "Doctor",
+              location: "params",
+              messages: [`Doctor not found`],
+            },
+          ],
+          stack: "",
+        });
+      }
+
+      session = await PatientSession.findOne({
+        doctor: reqDoctor._id,
+        patient: patient._id,
+        status: "connected",
+      });
+
+      if (!session) {
+        throw new APIError({
+          message: "You are not authorized to access this doctor",
+          status: 401,
+          errors: [
+            {
+              field: "Doctor",
+              location: "params",
+              messages: ["You are not authorized to access this doctor"],
+            },
+          ],
+          stack: "",
+        });
+      }
+
+      res.json(reqDoctor).status(200);
+    } else {
+      throw new APIError({
+        message: "User does not exist",
+        status: 404,
+        errors: [
+          {
+            field: "User",
+            location: "body",
+            messages: ["User does not exist"],
           },
         ],
         stack: "",
