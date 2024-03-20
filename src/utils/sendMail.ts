@@ -135,3 +135,33 @@ export const sendPatientResetPasswordMail = async (
 
   return info;
 };
+
+export const doctorAppointmentCancellationMail = async (
+  to: string,
+  subjectParam: string,
+  firstName: string,
+  lastName: string,
+  drName: string,
+  location: string,
+  date: string,
+) => {
+    const templatePath = path.join(
+    __dirname,
+    "../mail-templates/patient/appointment-cancelled.html"
+  );
+  const source = fs.readFileSync(templatePath, "utf-8").toString();
+  const template = handlebars.compile(source);
+  const replacements = {
+    firstName: firstName,
+    lastName: lastName,
+    drName: drName,
+    location: location,
+    date: date,
+  };
+  const htmlToSend = template(replacements);
+  const info = await sendEmail(to, subjectParam, htmlToSend);
+
+  console.log("Message sent: %s", info);
+
+  return info;
+}
