@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import doctorRouter from "./doctor/doctor.route";
 import patientRouter from "./patient/patient.router";
 import doctorPatientRouter from "./doctor-patient/doctorPatient.route";
+import appointmentRouter from "./../../routes/v1/appointment/appointment.route";
 import enumsRouter from "./common/enums.route";
 
 const router = express.Router();
@@ -13,8 +14,9 @@ router.get("/tryme", (_req: Request, res: Response) => {
 
 // Plug the router into the express app
 router.use("/doctor", doctorRouter);
-router.use("/patient",patientRouter);
-router.use("/patient-doc",doctorPatientRouter)
+router.use("/patient", patientRouter);
+router.use("/patient-doc", doctorPatientRouter);
+router.use("/appointment", appointmentRouter);
 
 // common routes
 router.use("/common", enumsRouter);

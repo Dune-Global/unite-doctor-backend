@@ -1,0 +1,447 @@
+import { Request, Response, NextFunction } from "express";
+import Doctor from "../../../models/doctor.model";
+import Patient from "../../../models/patient.model";
+import {
+  Appointment,
+  DoctorAvailability,
+} from "../../../models/appointment.model";
+import {
+  decodedDoctorPayload,
+  decodedPatientPayload,
+} from "../../../utils/jwt-auth/jwtDecoder";
+import { AppointmentStatus } from "./../../../enums/appointmentStatus";
+import APIError from "./../../../errors/api-error";
+import { doctorAppointmentCancellationMail } from "./../../../utils/sendMail";
+
+export const createNewAppointmentDate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    const availabilityDetails = req.body;
+
+    const newAvailability = new DoctorAvailability({
+      date: new Date(availabilityDetails.date),
+      startTime: new Date(availabilityDetails.startTime),
+      doctorId: doctor,
+      sessionDuration: availabilityDetails.sessionDuration,
+      numberOfAppointments: availabilityDetails.numberOfAppointments,
+      location: availabilityDetails.location,
+    });
+    await newAvailability.save();
+
+    res.status(200).json({
+      message: "New availability created successfully",
+      scheduleId: newAvailability._id,
+      doctorId: doctor._id,
+      date: newAvailability.date,
+      sessionDuration: newAvailability.sessionDuration,
+      numberOfAppointments: newAvailability.numberOfAppointments,
+      location: newAvailability.location,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDoctorsAvailability = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const doctorId = req.params.doctorId;
+    const doctorData = await Doctor.get(doctorId);
+
+    const availabilities = await DoctorAvailability.find({
+      doctorId: doctorData,
+      status: AppointmentStatus.PENDING,
+    })
+      .select("-startTime -__v")
+      .sort({ date: 1, startTime: 1 }) // Sort by date and startTime in ascending order
+      .exec();
+
+    const doctor = {
+      _id: doctorData._id,
+      firstName: doctorData.firstName,
+      lastName: doctorData.lastName,
+      designation: doctorData.designation,
+      gender: doctorData.gender,
+      email: doctorData.email,
+      imgUrl: doctorData.imgUrl,
+    };
+    res.status(200).json({
+      doctor,
+      availabilities,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateDoctorAvailability = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    const availabilityId = req.params.availabilityId;
+
+    // Only allow updates to sessionDuration, numberOfAppointments, location, and status
+    const availabilityDetails = {
+      sessionDuration: req.body.sessionDuration,
+      numberOfAppointments: req.body.numberOfAppointments,
+      location: req.body.location,
+    };
+
+    const availability = await DoctorAvailability.findById(availabilityId);
+
+    if (!availability) {
+      throw new APIError({
+        message: `No schedule found with the id ${availabilityId}`,
+        status: 404,
+        errors: [
+          {
+            field: "Appointment",
+            location: "params",
+            messages: [`No schedule found with the id ${availabilityId}`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Check if the doctor is the owner of the availability
+    if (availability.doctorId.toString() !== doctor._id.toString()) {
+      throw new APIError({
+        message: `You can't update this doctor schedule`,
+        status: 403,
+        errors: [
+          {
+            field: "Appointment",
+            location: "authorization",
+            messages: [`You can't update this doctor schedule`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const updatedAvailability = await DoctorAvailability.findByIdAndUpdate(
+      availabilityId,
+      availabilityDetails,
+      { new: true }
+    );
+
+    res.status(200).json({
+      message: "Availability updated successfully",
+      updatedAvailability,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatedAvailabilityStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    const availabilityId = req.params.availabilityId;
+
+    const availability = await DoctorAvailability.findById(availabilityId);
+
+    if (!availability) {
+      throw new APIError({
+        message: `No schedule found with the id ${availabilityId}`,
+        status: 404,
+        errors: [
+          {
+            field: "Appointment",
+            location: "params",
+            messages: [`No schedule found with the id ${availabilityId}`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Check if the doctor is the owner of the availability
+    if (availability.doctorId.toString() !== doctor._id.toString()) {
+      throw new APIError({
+        message: `You can't update this doctor schedule`,
+        status: 403,
+        errors: [
+          {
+            field: "Appointment",
+            location: "authorization",
+            messages: [`You can't update this doctor schedule`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const updatedAvailability = await DoctorAvailability.findByIdAndUpdate(
+      availabilityId,
+      { status: req.body.status },
+      { new: true }
+    );
+
+    if (req.body.status === AppointmentStatus.CANCELLED) {
+      const appointments = await Appointment.find({
+        doctorAvailabilityId: availabilityId,
+      });
+
+      const patientIds = appointments.map(appointment => appointment.patient);
+      const patients = await Patient.find({ _id: { $in: patientIds } });
+
+      for (const appointment of appointments) {
+        const patient = patients.find(p => p._id.toString() === appointment.patient.toString());
+
+        if (patient) {
+          const date = new Date(availability.date);
+          const formattedDate = `${date.getFullYear()} ${date.toLocaleString(
+            "default",
+            { month: "long" }
+          )} ${date.getDate()} at ${date.getHours()}:${
+            date.getMinutes() < 10 ? "0" : ""
+          }${date.getMinutes()}`;
+
+          const mailSendDetails = await doctorAppointmentCancellationMail(
+            patient.email,
+            "Important: Your Appointment Has Been Cancelled",
+            patient.firstName,
+            patient.lastName,
+            `${doctor.firstName} ${doctor.lastName}`,
+            availability.location,
+            formattedDate
+          );
+          console.log(mailSendDetails);
+
+          // Update the appointment status
+          appointment.status = AppointmentStatus.CANCELLED_BY_DOCTOR;
+          await appointment.save();
+        } else {
+          console.error(`No patient found with id: ${appointment.patient}`);
+        }
+      }
+    }
+
+    if (req.body.status === AppointmentStatus.DONE) {
+      await Appointment.updateMany(
+        { doctorAvailabilityId: availabilityId },
+        { status: AppointmentStatus.CANCELLED }
+      );
+    }
+
+    res.status(200).json({
+      message: "Availability status updated successfully",
+      updatedAvailability,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAvailableAppointmentNumbers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const doctorAvailabilityId = req.params.availabilityId;
+    const doctorAvailability = await DoctorAvailability.findById(
+      doctorAvailabilityId
+    );
+    if (!doctorAvailability) {
+      throw new APIError({
+        message: `Doctor schedule not found with id: ${doctorAvailabilityId}`,
+        status: 403,
+        errors: [
+          {
+            field: "doctorSchedule",
+            location: "params",
+            messages: [
+              `Doctor schedule not found with id: ${doctorAvailabilityId}`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Exclude cancelled appointments from the takenAppointmentNumbers array
+    const appointments = await Appointment.find({
+      doctorAvailabilityId,
+      status: { $ne: AppointmentStatus.CANCELLED },
+    });
+
+    const takenAppointmentNumbers = appointments.map(
+      (appointment) => appointment.appointmentNumber
+    );
+
+    const maxAppointments = doctorAvailability.numberOfAppointments;
+
+    // Create an array of all possible appointment numbers
+    const allAppointmentNumbers = Array.from(
+      { length: maxAppointments },
+      (_, i) => i + 1
+    );
+
+    // Filter out the taken appointment numbers to get the available ones
+    const availableAppointmentNumbers = allAppointmentNumbers.filter(
+      (number) => !takenAppointmentNumbers.includes(number)
+    );
+
+    // Map the available appointment numbers to objects with the appointment number and its allocated time
+    const availableAppointmentsWithTimes = availableAppointmentNumbers.map(
+      (number) => {
+        const allocatedTime = new Date(
+          doctorAvailability.startTime.getTime() +
+            number * doctorAvailability.sessionDuration * 60000
+        );
+        return { appointmentNumber: number, allocatedTime };
+      }
+    );
+
+    // Send the available appointments with their times back to the client
+    res.json(availableAppointmentsWithTimes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAnAppointment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const availabilityId = req.params.availabilityId;
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+    const appointmentNumber = req.body.appointmentNumber;
+
+    const appointment = new Appointment({
+      patient: patient._id,
+      appointmentNumber,
+      doctorAvailabilityId: availabilityId,
+      status: AppointmentStatus.PENDING,
+    });
+
+    await appointment.save();
+
+    // Fetch the DoctorAvailability document from the database
+    const doctorAvailability = await DoctorAvailability.findById(
+      availabilityId
+    );
+
+    // Check if doctorAvailability is null
+    if (!doctorAvailability) {
+      throw new APIError({
+        message: `Doctor schedule not found with id: ${doctorAvailability}`,
+        status: 403,
+        errors: [
+          {
+            field: "doctorSchedule",
+            location: "params",
+            messages: [
+              `Doctor schedule not found with id: ${doctorAvailability}`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const appointmentTime = new Date(
+      doctorAvailability.startTime.getTime() +
+        appointment.appointmentNumber *
+          doctorAvailability.sessionDuration *
+          60000
+    );
+
+    res.json({
+      appointmentId: appointment._id,
+      scheduleId: doctorAvailability._id,
+      patient: appointment.patient._id,
+      appointmentNumber: appointment.appointmentNumber,
+      appointmentTime: appointmentTime.toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelAnAppointment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const appointmentId = req.params.appointmentId;
+    const appointment = await Appointment.findById(appointmentId);
+
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+
+    if (!appointment) {
+      throw new APIError({
+        message: `No appointment found with id: ${appointmentId}`,
+        status: 404,
+        errors: [
+          {
+            field: "appointment",
+            location: "params",
+            messages: [`No appointment found with id: ${appointmentId}`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Check if the appointment belongs to the patient
+    if (appointment.patient.toString() !== patient._id.toString()) {
+      throw new APIError({
+        message: `Appointment does not belong to the patient`,
+        status: 403,
+        errors: [
+          {
+            field: "appointment",
+            location: "params",
+            messages: [`Appointment does not belong to the patient`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Update the appointment status to "CANCELLED"
+    appointment.status = AppointmentStatus.CANCELLED;
+
+    // Save the updated appointment to the database
+    await appointment.save();
+
+    // Send the updated appointment back to the client
+    res.json(appointment);
+  } catch (error) {
+    next(error);
+  }
+};
