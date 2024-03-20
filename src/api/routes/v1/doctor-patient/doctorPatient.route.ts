@@ -5,6 +5,7 @@ import {
   getConnectedDoctors,
   getConnectedPatients,
   getDoctorPatientDetail,
+  disconnectPatientDoc
 } from "../../../controllers/doctor-patient/doctorPatient.controller";
 import {
   isAuthDoctor,
@@ -15,6 +16,7 @@ import {
 const router = express.Router();
 
 router.get("/connect/:doctorId", isAuthPatient, connectPatientDoc);
+router.delete("/disconnect/:doctorId", isAuthPatient, disconnectPatientDoc);
 router.post("/add-prescription/:patientId", isAuthDoctor, addPrescription);
 router.get(
   "/doctor-patient-detail/:patientSessionId",

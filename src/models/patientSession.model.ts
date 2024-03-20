@@ -55,6 +55,7 @@ const patientSessionSchema = new Schema<PatientSession>({
   },
   allowedReportsToViewByThisDoctor: { type: [reportAccessSchema], default: [] },
   doctorLastAccessedDate: { type: Date, default: null },
+  status: { type: String, enum: ['connected', 'disconnected'], default: 'connected' },
 });
 
 export default mongoose.model<PatientSession>(

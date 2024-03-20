@@ -79,8 +79,17 @@ export const getVerifyEmail = async (
     const doctor = await Doctor.get(decodedToken.id);
 
     if (doctor.isEmailVerified === true) {
-      res.json({
+      throw new APIError({
         message: "Email already verified",
+        status: 404,
+        errors: [
+          {
+            field: "email",
+            location: "",
+            messages: ["Email already verified"],
+          },
+        ],
+        stack: "",
       });
     } else {
       let accountActivationTokenDetails: string;
