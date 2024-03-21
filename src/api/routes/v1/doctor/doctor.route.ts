@@ -5,6 +5,7 @@ import {
   testAuth,
   updateDoctorDetails,
   updateDoctorPassword,
+  getDocBasicById
 } from "../../../controllers/doctor/doctor.controller";
 import {
   isAuthDoctor,
@@ -68,6 +69,7 @@ router.post(
 );
 router.get("/validate-reset-password-token", validateResetPasswordToken);
 router.patch("/reset-password", resetPassword);
+router.get("/doc-basic/:doctorId", getDocBasicById);
 
 router.get("/refresh", refreshDoctor);
 
