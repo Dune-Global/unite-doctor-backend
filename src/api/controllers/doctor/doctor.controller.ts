@@ -227,3 +227,31 @@ export const getDoctorById = async (
     next(error);
   }
 };
+
+export const getDocBasicById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const docId = req.params.doctorId;
+    const doctor = await Doctor.findOne({ _id: docId }).select("firstName lastName designation");
+    if (!doctor) {
+      throw new APIError({
+        message: "Doctor not found",
+        status: 404,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: ["Doctor not found"],
+          },
+        ],
+        stack: "",
+      });
+    }
+    res.json(doctor);
+  } catch (error) {
+    next(error);
+  }
+};
