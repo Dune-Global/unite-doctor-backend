@@ -7,6 +7,7 @@ import {
   DoctorAccess,
   ReportAccess,
 } from "./../types";
+import { medicalStatus } from "./../enums/medicalStages";
 
 const medicineSchema = new Schema<Medicine>({
   name: String,
@@ -20,10 +21,10 @@ const reportSchema = new Schema<Report>({
 });
 
 const sessionSchema = new Schema<Session>({
-  sessionDate: Date,
+  sessionDate: { type: Date, default: Date.now },
   symptoms: String,
   diseases: String,
-  stage: String,
+  stage: { type: String, enum: Object.values(medicalStatus) },
   medicine: { type: [medicineSchema], default: [] },
   reports: { type: [reportSchema], default: [] },
   weight: { type: Number, default: null },

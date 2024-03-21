@@ -5,7 +5,10 @@ import {
   getConnectedDoctors,
   getConnectedPatients,
   getDoctorPatientDetail,
-  disconnectPatientDoc
+  disconnectPatientDoc,
+  givePermissionToDoctors,
+  getPermissionDoctors,
+  removePermissionFromDoctors,
 } from "../../../controllers/doctor-patient/doctorPatient.controller";
 import {
   isAuthDoctor,
@@ -25,5 +28,20 @@ router.get(
 );
 router.get("/connected-patients", isAuthDoctor, getConnectedPatients);
 router.get("/connected-doctors", isAuthPatient, getConnectedDoctors);
+router.post(
+  "/give-permission/:patientSessionId",
+  isAuthPatient,
+  givePermissionToDoctors
+);
+router.get(
+  "/get-permission/:patientSessionId",
+  isAuthPatient,
+  getPermissionDoctors
+);
+router.delete(
+  "/remove-permission/:patientSessionId",
+  isAuthPatient,
+  removePermissionFromDoctors
+);
 
 export default router;
