@@ -42,7 +42,7 @@ export const registerDoctor = async (
     const mailSendDetails = await sendDoctorAccountActivationMail(
       savedDoctor.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${savedDoctor.firstName}${savedDoctor.lastName}/at?${accountActivationToken}`,
+      `${env.fontendUrl}activate-account/${savedDoctor.firstName}${savedDoctor.lastName}?at=${accountActivationToken}`,
       savedDoctor.firstName,
       savedDoctor.lastName
     );
@@ -79,8 +79,17 @@ export const getVerifyEmail = async (
     const doctor = await Doctor.get(decodedToken.id);
 
     if (doctor.isEmailVerified === true) {
-      res.json({
+      throw new APIError({
         message: "Email already verified",
+        status: 404,
+        errors: [
+          {
+            field: "email",
+            location: "",
+            messages: ["Email already verified"],
+          },
+        ],
+        stack: "",
       });
     } else {
       let accountActivationTokenDetails: string;
@@ -91,7 +100,7 @@ export const getVerifyEmail = async (
       const mailSendDetails = await sendDoctorAccountActivationMail(
         doctor.email,
         "Account Activation",
-        `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}/at?${accountActivationToken}`,
+        `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}?at=${accountActivationToken}`,
         doctor.firstName,
         doctor.lastName
       );
@@ -222,7 +231,7 @@ export const sendResetPasswordEmail = async (
     const mailSendDetails = await sendDoctorResetPasswordMail(
       doctor.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}/rp?${resetPasswordToken}`,
+      `${env.fontendUrl}activate-account/${doctor.firstName}${doctor.lastName}?rp=${resetPasswordToken}`,
       doctor.firstName,
       doctor.lastName
     );

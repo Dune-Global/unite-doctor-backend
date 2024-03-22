@@ -5,8 +5,12 @@ import {
   testAuth,
   updateDoctorDetails,
   updateDoctorPassword,
+  getDocBasicById
 } from "../../../controllers/doctor/doctor.controller";
-import { isAuthDoctor } from "../../../../middleware/auth";
+import {
+  isAuthDoctor,
+  isAuthDoctorOrPatient,
+} from "../../../../middleware/auth";
 import { localVariables } from "../../../../middleware/locals";
 import { validateFields } from "../../../../middleware/json-body-validation/bodyFieldsValidate";
 import {
@@ -32,7 +36,7 @@ router.get("/test", isAuthDoctor, testAuth);
 
 // Doctor routes
 router.get("/all", isAuthDoctor, getDoctors);
-router.get("/find-one", isAuthDoctor, getDoctorById);
+router.get("/find-one/:doctorId", isAuthDoctorOrPatient, getDoctorById);
 router.put(
   "/update",
   isAuthDoctor,
@@ -65,6 +69,7 @@ router.post(
 );
 router.get("/validate-reset-password-token", validateResetPasswordToken);
 router.patch("/reset-password", resetPassword);
+router.get("/doc-basic/:doctorId", getDocBasicById);
 
 router.get("/refresh", refreshDoctor);
 

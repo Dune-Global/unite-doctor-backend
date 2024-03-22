@@ -19,13 +19,29 @@ export const connectPatientDoc = async (
     const patient = await Patient.get(decodedToken.id);
     const doctor = await Doctor.get(req.params.doctorId);
 
+    // Check if the doctor exists
+    if (!doctor) {
+      throw new APIError({
+        message: `Invalid QR code`,
+        status: 400,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Invalid QR code`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
     // Check if a session already exists
     const existingSession = await PatientSession.findOne({
       patient: patient,
       doctor: doctor,
     });
 
-    if (existingSession) {
+    if (existingSession && existingSession.status === "connected") {
       // If a session already exists, return a message
       throw new APIError({
         message: `Already Connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
@@ -40,6 +56,14 @@ export const connectPatientDoc = async (
           },
         ],
         stack: "",
+      });
+    } else if (existingSession && existingSession.status === "disconnected") {
+      // If a session already exists, update the status to connected
+      await PatientSession.findByIdAndUpdate(existingSession._id, {
+        status: "connected",
+      });
+      res.status(200).json({
+        message: `Connected to Dr. ${doctor.firstName} ${doctor.lastName} successfully`,
       });
     }
 
@@ -58,7 +82,74 @@ export const connectPatientDoc = async (
   }
 };
 
-export const addPrescription = async (req: Request, res: Response) => {
+export const disconnectPatientDoc = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+    const doctor = await Doctor.get(req.params.doctorId);
+
+    // Check if the doctor exists
+    if (!doctor) {
+      throw new APIError({
+        message: `Invalid QR code`,
+        status: 400,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Invalid QR code`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Check if a session already exists
+    const existingSession = await PatientSession.findOne({
+      patient: patient,
+      doctor: doctor,
+      status: "connected",
+    });
+
+    if (!existingSession) {
+      throw new APIError({
+        message: `Not connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
+        status: 404,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [
+              `Not connected with Dr. ${doctor.firstName} ${doctor.lastName}`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    await PatientSession.findByIdAndUpdate(existingSession._id, {
+      status: "disconnected",
+    });
+
+    res.status(200).json({
+      message: `Disconnected from Dr. ${doctor.firstName} ${doctor.lastName} successfully`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addPrescription = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const { prescription } = req.body;
   const token = req.headers.authorization?.split(" ")[1];
 
@@ -72,6 +163,7 @@ export const addPrescription = async (req: Request, res: Response) => {
     const session = await PatientSession.findOne({
       doctor: doctor._id,
       patient: patient._id,
+      status: "connected",
     });
 
     if (!session) {
@@ -93,18 +185,20 @@ export const addPrescription = async (req: Request, res: Response) => {
     const updatedPatientSession = await PatientSession.findByIdAndUpdate(
       session._id,
       { $push: { prescription: prescription } },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     res.status(200).json(updatedPatientSession);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error updating PatientSession", error: err });
+    next(err);
   }
 };
 
-export const getDoctorPatientDetail = async (req: Request, res: Response) => {
+export const getDoctorPatientDetail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const patientSessionId = req.params.patientSessionId;
   const token = req.headers.authorization?.split(" ")[1];
   const decodedToken = decodedDoctorPayload(token as string);
@@ -114,20 +208,9 @@ export const getDoctorPatientDetail = async (req: Request, res: Response) => {
     const doctor = await Doctor.findOne({ _id: userId });
     const patient = await Patient.findOne({ _id: userId });
 
-    let session;
-
-    if (doctor) {
-      session = await PatientSession.findOneAndUpdate(
-        { _id: patientSessionId, doctor: doctor._id },
-        { doctorLastAccessedDate: new Date() },
-        { new: true }
-      );
-    } else if (patient) {
-      session = await PatientSession.findOne({
-        _id: patientSessionId,
-        patient: patient._id,
-      });
-    }
+    const session = await PatientSession.findOne({
+      _id: patientSessionId,
+    });
 
     if (!session) {
       throw new APIError({
@@ -144,24 +227,86 @@ export const getDoctorPatientDetail = async (req: Request, res: Response) => {
       });
     }
 
+    if (doctor) {
+      console.log(
+        session.allowedDoctorsToViewThisDoctorsSessionDetails[1].doctorId.toString() ===
+          doctor._id.toString()
+      );
+      if (
+        doctor._id.toString() !== session.doctor.toString() &&
+        !session.allowedDoctorsToViewThisDoctorsSessionDetails.some(
+          (doc) => doc.doctorId.toString() === doctor._id.toString()
+        )
+      ) {
+        throw new APIError({
+          message: `You are not authorized to access this session`,
+          status: 401,
+          errors: [
+            {
+              field: "Doctor",
+              location: "params",
+              messages: [`You are not authorized to access this session`],
+            },
+          ],
+          stack: "",
+        });
+      } else if (doctor._id.toString() === session.doctor.toString()) {
+        await PatientSession.findByIdAndUpdate(session._id, {
+          doctorLastAccessedDate: new Date(),
+        });
+      } else if (
+        session.allowedDoctorsToViewThisDoctorsSessionDetails.some(
+          (doc) => doc.doctorId.toString() === doctor._id.toString()
+        )
+      ) {
+        await PatientSession.findOneAndUpdate(
+          {
+            _id: session._id,
+            "allowedDoctorsToViewThisDoctorsSessionDetails.doctorId":
+              doctor._id,
+          },
+          {
+            $set: {
+              "allowedDoctorsToViewThisDoctorsSessionDetails.$.informationLastAccessDate":
+                new Date(),
+            },
+          }
+        );
+      }
+    } else if (patient) {
+      if (patient._id.toString() !== session.patient.toString()) {
+        throw new APIError({
+          message: `You are not authorized to access this session`,
+          status: 401,
+          errors: [
+            {
+              field: "Patient",
+              location: "params",
+              messages: [`You are not authorized to access this session`],
+            },
+          ],
+          stack: "",
+        });
+      }
+    }
+
+    session.prescription.sort((a, b) => {
+      return (
+        new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+      );
+    });
+
     res.status(200).json(session);
   } catch (err) {
-    throw new APIError({
-      message: err.message,
-      status: 500,
-      errors: [
-        {
-          field: "Patient-Doctor",
-          location: "",
-          messages: [],
-        },
-      ],
-      stack: "",
-    });
+    next(err);
   }
 };
 
-export const getConnectedPatients = async (req: Request, res: Response) => {
+export const getConnectedPatients = async (
+  req: Request,
+  res: Response,
+  next: NewableFunction
+) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedDoctorPayload(token as string);
@@ -173,31 +318,28 @@ export const getConnectedPatients = async (req: Request, res: Response) => {
     const response = connectedPatients.map((session) => ({
       sessionId: session._id,
       patient: session.patient,
+      status: "connected",
     }));
 
     res.status(200).json(response);
   } catch (err) {
-    throw new APIError({
-      message: err.message,
-      status: 500,
-      errors: [
-        {
-          field: "Patient-Doctor",
-          location: "",
-          messages: [],
-        },
-      ],
-      stack: "",
-    });
+    next(err);
   }
 };
 
-export const getConnectedDoctors = async (req: Request, res: Response) => {
+export const getConnectedDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
-    const connectedDoctors = await PatientSession.find({ patient: patient }).populate('doctor');
+
+    const connectedDoctors = await PatientSession.find({
+      patient: patient,
+    }).populate("doctor");
 
     const response = connectedDoctors.map((session) => ({
       sessionId: session._id,
@@ -209,21 +351,228 @@ export const getConnectedDoctors = async (req: Request, res: Response) => {
         email: session.doctor.email,
         doctorLastAccessedDate: session.doctorLastAccessedDate,
       },
+      status: session.status,
     }));
 
     res.status(200).json(response);
   } catch (err) {
-    throw new APIError({
-      message: err.message,
-      status: 500,
-      errors: [
-        {
-          field: "Patient-Doctor",
-          location: "",
-          messages: [],
-        },
-      ],
-      stack: "",
+    next(err);
+  }
+};
+
+export const givePermissionToDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+
+    const session = await PatientSession.findOne({
+      patient: patient,
+      _id: req.params.patientSessionId,
     });
+
+    if (!session) {
+      throw new APIError({
+        message: `Session does not belong to you`,
+        status: 403,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [`Session does not belong to you`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    if (session.doctor.toString() !== req.body.doctorId) {
+      throw new APIError({
+        message: `This doctor already has permission`,
+        status: 409,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [`This doctor already has permission`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const allowedDoctors =
+      session.allowedDoctorsToViewThisDoctorsSessionDetails;
+    const doctorId = req.body.doctorId;
+    const doctor = await Doctor.get(doctorId);
+
+    if (
+      allowedDoctors.find(
+        (doc) => doc.doctorId.toString() === doctor._id.toString()
+      )
+    ) {
+      throw new APIError({
+        message: `Doctor already has permission`,
+        status: 409,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Doctor already has permission`],
+          },
+        ],
+        stack: "",
+      });
+    }
+    const sessionAsking = await PatientSession.findOne({
+      patient: patient,
+      doctor: doctor,
+    });
+
+    if (!sessionAsking) {
+      throw new APIError({
+        message: `You are not connected with the doctor`,
+        status: 409,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`You are not connected with the doctor`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const updatedSession = await PatientSession.findByIdAndUpdate(
+      session._id,
+      {
+        $push: {
+          allowedDoctorsToViewThisDoctorsSessionDetails: {
+            doctorId: doctor,
+          },
+        },
+      },
+      { new: true }
+    );
+
+    res.status(200).json(updatedSession);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removePermissionFromDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+
+    const session = await PatientSession.findOne({
+      patient: patient,
+      _id: req.params.patientSessionId,
+    });
+
+    if (!session) {
+      throw new APIError({
+        message: `Session does not belong to you`,
+        status: 403,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [`Session does not belong to you`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const allowedDoctors =
+      session.allowedDoctorsToViewThisDoctorsSessionDetails;
+    const doctorId = req.body.doctorId;
+    const doctor = await Doctor.get(doctorId);
+
+    if (!allowedDoctors.find((doc) => doc.doctorId.toString() === doctor._id.toString())) {
+      throw new APIError({
+        message: `Doctor does not have permission`,
+        status: 409,
+        errors: [
+          {
+            field: "Doctor",
+            location: "params",
+            messages: [`Doctor does not have permission`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const updatedSession = await PatientSession.findByIdAndUpdate(
+      session._id,
+      {
+        $pull: {
+          allowedDoctorsToViewThisDoctorsSessionDetails: {
+            doctorId: doctor,
+          },
+        },
+      },
+      { new: true }
+    );
+
+    res.status(200).json(updatedSession);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPermissionDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patient = await Patient.get(decodedToken.id);
+
+    const session = await PatientSession.findOne({
+      patient: patient,
+      _id: req.params.patientSessionId,
+    });
+
+    if (!session) {
+      throw new APIError({
+        message: `Session does not belong to you`,
+        status: 403,
+        errors: [
+          {
+            field: "Patient-Doctor",
+            location: "body",
+            messages: [`Session does not belong to you`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const allowedDoctors =
+      session.allowedDoctorsToViewThisDoctorsSessionDetails;
+    const response = allowedDoctors.map((doc) => ({
+      doctorId: doc.doctorId,
+      informationLastAccessDate: doc.informationLastAccessDate,
+    }));
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
   }
 };

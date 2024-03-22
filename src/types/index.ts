@@ -44,3 +44,5 @@ export {
   Session,
   PatientSession,
 } from "./patientSession";
+
+export { IAppointment, IDoctorAvailability } from "./appointment.model";

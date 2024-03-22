@@ -41,4 +41,5 @@ export interface PatientSession extends Document {
   allowedDoctorsToViewThisDoctorsSessionDetails: DoctorAccess[];
   allowedReportsToViewByThisDoctor: ReportAccess[];
   doctorLastAccessedDate ?: Date;
+  status: 'connected' | 'disconnected';
 }
