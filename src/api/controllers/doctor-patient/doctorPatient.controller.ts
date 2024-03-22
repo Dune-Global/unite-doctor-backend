@@ -214,13 +214,13 @@ export const getDoctorPatientDetail = async (
 
     if (!session) {
       throw new APIError({
-        message: `Session does not belong to you`,
+        message: `Session not found`,
         status: 403,
         errors: [
           {
             field: "Patient-Doctor",
-            location: "body",
-            messages: [`Session does not belong to you`],
+            location: "params",
+            messages: [`Session not found`],
           },
         ],
         stack: "",
@@ -228,10 +228,6 @@ export const getDoctorPatientDetail = async (
     }
 
     if (doctor) {
-      console.log(
-        session.allowedDoctorsToViewThisDoctorsSessionDetails[1].doctorId.toString() ===
-          doctor._id.toString()
-      );
       if (
         doctor._id.toString() !== session.doctor.toString() &&
         !session.allowedDoctorsToViewThisDoctorsSessionDetails.some(
@@ -368,7 +364,7 @@ export const getSharedDoctors = async (
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedDoctorPayload(token as string);
-    const doctor = await Patient.get(decodedToken.id);
+    const doctor = await Doctor.get(decodedToken.id);
     const patient = await Patient.get(req.params.patientId);
 
     const patientSessions = await PatientSession.find({
@@ -381,16 +377,29 @@ export const getSharedDoctors = async (
       )
     );
 
-    const response = sharedDoctors.map((session) => ({
-      sessionId: session._id,
-      doctor: {
-        firstName: session.doctor.firstName,
-        lastName: session.doctor.lastName,
-        designation: session.doctor.designation,
-        email: session.doctor.email,
-        contactNo: session.doctor.contactNo,
-      },
-    }));
+    async function getDoctorById(id: string) {
+      return await Doctor.findById(id);
+    }
+
+    const response = await Promise.all(
+      sharedDoctors.map(async (session) => {
+        const doctor = await getDoctorById(session.doctor);
+        if (!doctor) {
+          throw new Error(`No doctor found with id ${session.doctor}`);
+        }
+        return {
+          sessionId: session._id,
+          doctorId: session.doctor,
+          doctorDetails: {
+            firstName: doctor.firstName,
+            lastName: doctor.lastName,
+            designation: doctor.designation,
+            email: doctor.email,
+            contactNo: doctor.mobile,
+          },
+        };
+      })
+    );
 
     res.status(200).json(response);
   } catch (err) {
@@ -427,7 +436,7 @@ export const givePermissionToDoctors = async (
       });
     }
 
-    if (session.doctor.toString() !== req.body.doctorId) {
+    if (session.doctor.toString() === req.body.doctorId) {
       throw new APIError({
         message: `This doctor already has permission`,
         status: 409,
