@@ -9,6 +9,7 @@ import {
   givePermissionToDoctors,
   getPermissionDoctors,
   removePermissionFromDoctors,
+  getSharedDoctors,
 } from "../../../controllers/doctor-patient/doctorPatient.controller";
 import {
   isAuthDoctor,
@@ -28,6 +29,7 @@ router.get(
 );
 router.get("/connected-patients", isAuthDoctor, getConnectedPatients);
 router.get("/connected-doctors", isAuthPatient, getConnectedDoctors);
+router.get("/shared-doctors", isAuthDoctor, getSharedDoctors);
 router.post(
   "/give-permission/:patientSessionId",
   isAuthPatient,
