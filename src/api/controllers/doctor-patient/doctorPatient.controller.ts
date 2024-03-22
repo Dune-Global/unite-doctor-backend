@@ -360,6 +360,43 @@ export const getConnectedDoctors = async (
   }
 };
 
+export const getSharedDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Patient.get(decodedToken.id);
+    const patient = await Patient.get(req.params.patientId);
+
+    const patientSessions = await PatientSession.find({
+      patient: patient,
+    });
+
+    const sharedDoctors = patientSessions.filter((session) =>
+      session.allowedDoctorsToViewThisDoctorsSessionDetails.some(
+        (doc) => doc.doctorId.toString() === doctor._id.toString()
+      )
+    );
+
+    const response = sharedDoctors.map((session) => ({
+      sessionId: session._id,
+      doctor: {
+        firstName: session.doctor.firstName,
+        lastName: session.doctor.lastName,
+        designation: session.doctor.designation,
+        email: session.doctor.email,
+        contactNo: session.doctor.contactNo,
+      },
+    }));
+
+    res.status(200).json(response);
+  } catch (err) {
+    next(err);
+  }
+};
 export const givePermissionToDoctors = async (
   req: Request,
   res: Response,
@@ -501,7 +538,11 @@ export const removePermissionFromDoctors = async (
     const doctorId = req.body.doctorId;
     const doctor = await Doctor.get(doctorId);
 
-    if (!allowedDoctors.find((doc) => doc.doctorId.toString() === doctor._id.toString())) {
+    if (
+      !allowedDoctors.find(
+        (doc) => doc.doctorId.toString() === doctor._id.toString()
+      )
+    ) {
       throw new APIError({
         message: `Doctor does not have permission`,
         status: 409,
