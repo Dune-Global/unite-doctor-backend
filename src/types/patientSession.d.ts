@@ -13,6 +13,7 @@ export interface Report {
 
 export interface Session {
   sessionDate: Date;
+  sessionDescription: string;
   symptoms: string;
   diseases: string;
   stage: string;

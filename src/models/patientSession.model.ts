@@ -22,6 +22,7 @@ const reportSchema = new Schema<Report>({
 
 const sessionSchema = new Schema<Session>({
   sessionDate: { type: Date, default: Date.now },
+  sessionDescription: String,
   symptoms: String,
   diseases: String,
   stage: { type: String, enum: Object.values(medicalStatus) },
