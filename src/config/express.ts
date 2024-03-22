@@ -11,11 +11,12 @@ const app = express();
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(bodyParser.json());
 app.use(express.json());
+
 app.use(cors(
     {
-        origin: "http://localhost:3000",
+        origin: ["http://localhost:3000", "http://localhost:3001"],
         credentials: true,
-        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+        methods: "GET,PUT,PATCH,POST,DELETE",
     }
 ));
 
