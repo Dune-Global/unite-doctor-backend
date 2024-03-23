@@ -488,6 +488,7 @@ export const getDoctorAppointments = async (
         // Convert the appointment to a plain JavaScript object and add the session time
         const appointmentObj = appointment.toObject();
         appointmentObj.sessionTime = sessionTime;
+        appointmentObj.location = availability.location;
 
         // Replace the appointment in the array with the new object
         appointments[appointments.indexOf(appointment)] = appointmentObj;
@@ -550,6 +551,7 @@ export const getPatientAppointments = async (
         // Convert the appointment to a plain JavaScript object and add the session time
         const appointmentObj = appointment.toObject();
         appointmentObj.sessionTime = sessionTime;
+        appointmentObj.location = availability.location;
 
         // Replace the appointment in the array with the new object
         appointments[appointments.indexOf(appointment)] = appointmentObj;
