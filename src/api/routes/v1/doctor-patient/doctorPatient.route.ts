@@ -10,6 +10,7 @@ import {
   getPermissionDoctors,
   updateSharedDoctors,
   getSharedDoctors,
+  getDashboardData,
 } from "../../../controllers/doctor-patient/doctorPatient.controller";
 import {
   isAuthDoctor,
@@ -45,5 +46,6 @@ router.put(
   isAuthPatient,
   updateSharedDoctors
 );
+router.get("/dashboard-data", isAuthDoctor, getDashboardData);
 
 export default router;
