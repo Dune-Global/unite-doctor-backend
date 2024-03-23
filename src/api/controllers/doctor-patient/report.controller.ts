@@ -356,7 +356,7 @@ export const getReportsDoctor = async (
 
     const patientReports = await Report.find({
       patient: patient._id,
-    });
+    }).select("-reportUrl");
 
     const reports = patientReports.filter((report) => {
       return report.allowedDoctorsToView.find(
@@ -371,6 +371,88 @@ export const getReportsDoctor = async (
     next(error);
   }
 };
+
+export const doctorViewReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    if (!doctor) {
+      throw new APIError({
+        message: "Doctor does not exist",
+        status: 404,
+        errors: [
+          {
+            field: "Doctor",
+            location: "token",
+            messages: ["Doctor does not exist"],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const report = await Report.findById(req.params.reportId);
+
+    if (!report) {
+      throw new APIError({
+        message: "Report does not exist",
+        status: 404,
+        errors: [
+          {
+            field: "Report",
+            location: "params",
+            messages: ["Report does not exist"],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    if (
+      !report.allowedDoctorsToView.find(
+        (doc) => doc.doctorId.toString() === doctor._id.toString()
+      )
+    ) {
+      throw new APIError({
+        message: "You are not authorized to view this report",
+        status: 400,
+        errors: [
+          {
+            field: "Report",
+            location: "params",
+            messages: ["You are not authorized to view this report"],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    // Update the informationLastAccessDate for the doctor
+    await Report.updateOne(
+      {
+        _id: report._id,
+        "allowedDoctorsToView.doctorId": doctor._id,
+      },
+      {
+        $set: {
+          "allowedDoctorsToView.$.informationLastAccessDate": new Date(),
+        },
+      }
+    );
+
+    res.json({
+      report,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export const deleteReport = async (
   req: Request,
