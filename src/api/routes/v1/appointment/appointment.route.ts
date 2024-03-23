@@ -6,7 +6,10 @@ import {
   updatedAvailabilityStatus,
   getAvailableAppointmentNumbers,
   getAnAppointment,
-  cancelAnAppointment
+  cancelAnAppointment,
+  getDoctorAppointments,
+  getPatientAppointments,
+  doctorAppointmentStatusUpdate
 } from "./../../../controllers/appointment/appointment.controller";
 import { isAuthDoctor, isAuthPatient } from "../../../../middleware/auth";
 
@@ -22,6 +25,13 @@ router.delete(
   "/delete-availability/:appointmentId",
   isAuthPatient,
   cancelAnAppointment
+);
+router.get("/doctor-appointments", isAuthDoctor, getDoctorAppointments);
+router.get("/patient-appointments", isAuthPatient, getPatientAppointments);
+router.patch(
+  "/doctor-appointment-status/:appointmentId",
+  isAuthDoctor,
+  doctorAppointmentStatusUpdate
 );
 
 export default router;

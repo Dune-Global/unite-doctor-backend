@@ -207,11 +207,13 @@ export const updatedAvailabilityStatus = async (
         doctorAvailabilityId: availabilityId,
       });
 
-      const patientIds = appointments.map(appointment => appointment.patient);
+      const patientIds = appointments.map((appointment) => appointment.patient);
       const patients = await Patient.find({ _id: { $in: patientIds } });
 
       for (const appointment of appointments) {
-        const patient = patients.find(p => p._id.toString() === appointment.patient.toString());
+        const patient = patients.find(
+          (p) => p._id.toString() === appointment.patient.toString()
+        );
 
         if (patient) {
           const date = new Date(availability.date);
@@ -441,6 +443,202 @@ export const cancelAnAppointment = async (
 
     // Send the updated appointment back to the client
     res.json(appointment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDoctorAppointments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctorId = decodedToken.id;
+
+    // Fetch all availabilities of the doctor sorted by date
+    const availabilities = await DoctorAvailability.find({
+      doctorId: doctorId,
+      status: AppointmentStatus.PENDING,
+    }).sort({ date: 1 });
+
+    const appointmentsArray = [];
+
+    // For each availability, fetch the appointments sorted by appointment number
+    for (const availability of availabilities) {
+      const appointments: any = await Appointment.find({
+        doctorAvailabilityId: availability._id,
+        status: AppointmentStatus.PENDING,
+      })
+        .populate(
+          "patient",
+          "-password -email -createdAt -updatedAt -mobile -__v"
+        ) // Only select these fields
+        .sort({ appointmentNumber: 1 });
+
+      // For each appointment, calculate the session time
+      for (const appointment of appointments) {
+        const startTime = availability.startTime.getTime(); // Convert to timestamp
+        const totalDuration =
+          availability.sessionDuration * (appointment.appointmentNumber - 1); // Subtract 1 because appointmentNumber starts from 1
+        const sessionTime = new Date(startTime + totalDuration * 60000); // Convert back to date object, multiply by 60000 to convert minutes to milliseconds
+
+        // Convert the appointment to a plain JavaScript object and add the session time
+        const appointmentObj = appointment.toObject();
+        appointmentObj.sessionTime = sessionTime;
+
+        // Replace the appointment in the array with the new object
+        appointments[appointments.indexOf(appointment)] = appointmentObj;
+      }
+
+      // Push the availability date, location, and appointments into the array
+      appointmentsArray.push({
+        date: availability.date,
+        location: availability.location,
+        appointments: appointments,
+      });
+    }
+
+    res.json(appointmentsArray);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPatientAppointments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const patientId = req.params.patientId; // Assuming patientId is passed as a URL parameter
+
+    // Fetch all availabilities of the doctor sorted by date
+    const availabilities = await DoctorAvailability.find({
+      patient: patientId,
+      status: AppointmentStatus.PENDING,
+    }).sort({ date: 1 });
+
+    const appointmentsArray = [];
+
+    // For each availability, fetch the appointments sorted by appointment number
+    for (const availability of availabilities) {
+      const appointments: any = await Appointment.find({
+        doctorAvailabilityId: availability._id,
+        status: AppointmentStatus.PENDING,
+      })
+        .populate({
+          path: "doctorAvailabilityId",
+          populate: {
+            path: "doctorId",
+            model: "Doctor",
+            select:
+              "-password -clinic -mobile -dateOfBirth -nicNumber -isEmailVerified -isSlmcVerified -createdAt -updatedAt", // Exclude password field
+          },
+        }) // Populate doctor details
+        .sort({ appointmentNumber: 1 });
+
+      // For each appointment, calculate the session time
+      for (const appointment of appointments) {
+        const startTime = availability.startTime.getTime(); // Convert to timestamp
+        const totalDuration =
+          availability.sessionDuration * (appointment.appointmentNumber - 1); // Subtract 1 because appointmentNumber starts from 1
+        const sessionTime = new Date(startTime + totalDuration * 60000); // Convert back to date object, multiply by 60000 to convert minutes to milliseconds
+
+        // Convert the appointment to a plain JavaScript object and add the session time
+        const appointmentObj = appointment.toObject();
+        appointmentObj.sessionTime = sessionTime;
+
+        // Replace the appointment in the array with the new object
+        appointments[appointments.indexOf(appointment)] = appointmentObj;
+      }
+
+      // Push the availability date, location, and appointments into the array
+      appointmentsArray.push({
+        date: availability.date,
+        location: availability.location,
+        appointments: appointments,
+      });
+    }
+
+    res.json(appointmentsArray);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const doctorAppointmentStatusUpdate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    const appointmentId = req.params.appointmentId;
+    const status = req.body.status;
+
+    const appointment = await Appointment.findById(appointmentId);
+
+    if (!appointment) {
+      throw new APIError({
+        message: `No appointment found with id: ${appointmentId}`,
+        status: 404,
+        errors: [
+          {
+            field: "appointment",
+            location: "params",
+            messages: [`No appointment found with id: ${appointmentId}`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    const availability = await DoctorAvailability.findById(
+      appointment.doctorAvailabilityId
+    );
+
+    if (!availability) {
+      throw new APIError({
+        message: `No availability found with id: ${appointment.doctorAvailabilityId}`,
+        status: 404,
+        errors: [
+          {
+            field: "availability",
+            location: "params",
+            messages: [
+              `No availability found with id: ${appointment.doctorAvailabilityId}`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    if (availability.doctorId.toString() !== doctor._id.toString()) {
+      throw new APIError({
+        message: `You can't update this appointment`,
+        status: 403,
+        errors: [
+          {
+            field: "appointment",
+            location: "authorization",
+            messages: [`You can't update this appointment`],
+          },
+        ],
+        stack: "",
+      });
+    }
+
+    appointment.status = status;
+    await appointment.save();
+
+    res.json(appointment).status(200);
   } catch (error) {
     next(error);
   }

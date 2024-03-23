@@ -309,14 +309,22 @@ export const getConnectedPatients = async (
     const doctor = await Doctor.get(decodedToken.id);
     const connectedPatients = await PatientSession.find({
       doctor: doctor,
-    }).populate("patient");
-
-    const response = connectedPatients.map((session) => ({
-      sessionId: session._id,
-      patient: session.patient,
       status: "connected",
-    }));
+    }).exec();
 
+    const response = await Promise.all(
+      connectedPatients.map(async (session) => {
+        const patient = await Patient.findById(session.patient)
+          .select('-password -__v') 
+          .lean();
+
+        return {
+          sessionId: session._id,
+          patient: patient,
+          status: "connected",
+        };
+      })
+    );
     res.status(200).json(response);
   } catch (err) {
     next(err);
