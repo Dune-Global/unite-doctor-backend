@@ -200,7 +200,7 @@ export const sendResetPasswordEmail = async (
       throw new APIError({
         message: "An email is required to reset the password",
         errors: [],
-        status: 401,
+        status: 400,
         stack: "",
       });
     }
@@ -270,7 +270,7 @@ export const validateResetPasswordToken = async (
     ) {
       throw new APIError({
         message: "Unauthorized",
-        status: 401,
+        status: 400,
         errors: [
           {
             field: "Authorization",
@@ -320,7 +320,7 @@ export const resetPassword = async (
     ) {
       throw new APIError({
         message: "Unauthorized",
-        status: 401,
+        status: 400,
         errors: [
           {
             field: "Authorization",

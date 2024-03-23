@@ -30,17 +30,11 @@ export interface DoctorAccess {
   informationLastAccessDate?: Date;
 }
 
-export interface ReportAccess {
-  reportId: mongoose.Schema.Types.ObjectId;
-  lastAccessDateByDoctor?: Date;
-}
-
 export interface PatientSession extends Document {
   patient: mongoose.Schema.Types.ObjectId;
   doctor: mongoose.Schema.Types.ObjectId;
   prescription: Session[];
   allowedDoctorsToViewThisDoctorsSessionDetails: DoctorAccess[];
-  allowedReportsToViewByThisDoctor: ReportAccess[];
   doctorLastAccessedDate ?: Date;
   status: 'connected' | 'disconnected';
 }

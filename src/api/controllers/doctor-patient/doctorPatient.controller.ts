@@ -236,7 +236,7 @@ export const getDoctorPatientDetail = async (
       ) {
         throw new APIError({
           message: `You are not authorized to access this session`,
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Doctor",
@@ -273,7 +273,7 @@ export const getDoctorPatientDetail = async (
       if (patient._id.toString() !== session.patient.toString()) {
         throw new APIError({
           message: `You are not authorized to access this session`,
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Patient",
@@ -331,17 +331,18 @@ export const getConnectedDoctors = async (
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
-    const patient = await Patient.get(decodedToken.id);
+    const patient: any = await Patient.get(decodedToken.id);
 
-    const connectedDoctors = await PatientSession.find({
+    const connectedDoctors: any = await PatientSession.find({
       patient: patient,
     }).populate("doctor");
 
-    const response = connectedDoctors.map((session) => ({
+    const response = connectedDoctors.map((session: any) => ({
       sessionId: session._id,
       doctor: {
-        firstname: session.doctor.firstName,
-        lastname: session.doctor.lastName,
+        id: session.doctor._id,
+        firstName: session.doctor.firstName,
+        lastName: session.doctor.lastName,
         designation: session.doctor.designation,
         gender: session.doctor.gender,
         email: session.doctor.email,
