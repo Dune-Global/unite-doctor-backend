@@ -60,7 +60,7 @@ export const getPatientById = async (
       if (patient._id.toString() !== req.params.patientId) {
         throw new APIError({
           message: "You are not authorized to access this patient",
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Patient",
@@ -102,7 +102,7 @@ export const getPatientById = async (
       if (!session) {
         throw new APIError({
           message: "You are not authorized to access this patient",
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Patient",

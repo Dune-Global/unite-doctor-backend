@@ -154,7 +154,7 @@ export const getDoctorById = async (
       if (doctor._id.toString() !== req.params.doctorId) {
         throw new APIError({
           message: "You are not authorized to access this doctor",
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Doctor",
@@ -196,7 +196,7 @@ export const getDoctorById = async (
       if (!session) {
         throw new APIError({
           message: "You are not authorized to access this doctor",
-          status: 401,
+          status: 400,
           errors: [
             {
               field: "Doctor",
@@ -235,7 +235,9 @@ export const getDocBasicById = async (
 ) => {
   try {
     const docId = req.params.doctorId;
-    const doctor = await Doctor.findOne({ _id: docId }).select("firstName lastName designation");
+    const doctor = await Doctor.findOne({ _id: docId }).select(
+      "firstName lastName designation"
+    );
     if (!doctor) {
       throw new APIError({
         message: "Doctor not found",

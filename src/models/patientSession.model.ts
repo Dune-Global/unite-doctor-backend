@@ -5,7 +5,6 @@ import {
   Medicine,
   Report,
   DoctorAccess,
-  ReportAccess,
 } from "./../types";
 import { medicalStatus } from "./../enums/medicalStages";
 
@@ -39,11 +38,6 @@ const doctorAccessSchema = new Schema<DoctorAccess>({
   informationLastAccessDate: { type: Date, default: null },
 });
 
-const reportAccessSchema = new Schema<ReportAccess>({
-  reportId: { type: Schema.Types.ObjectId, ref: "Report" },
-  lastAccessDateByDoctor: { type: Date, default: null },
-});
-
 const patientSessionSchema = new Schema<PatientSession>({
   patient: { type: Schema.Types.ObjectId, ref: "Patient" },
   doctor: { type: Schema.Types.ObjectId, ref: "Doctor" },
@@ -55,7 +49,6 @@ const patientSessionSchema = new Schema<PatientSession>({
     type: [doctorAccessSchema],
     default: [],
   },
-  allowedReportsToViewByThisDoctor: { type: [reportAccessSchema], default: [] },
   doctorLastAccessedDate: { type: Date, default: null },
   status: { type: String, enum: ['connected', 'disconnected'], default: 'connected' },
 });
