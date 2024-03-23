@@ -5,7 +5,8 @@ import {
   getReportsPatient,
   getReportsDoctor,
   getDoctorsWithAccess,
-  updateDoctorsAccess
+  updateDoctorsAccess,
+  doctorViewReport
 } from "./../../../controllers/doctor-patient/report.controller";
 import { isAuthDoctor, isAuthPatient } from "./../../../../middleware/auth";
 
@@ -17,7 +18,6 @@ router.get("/get-reports-doctor/:patientId", isAuthDoctor, getReportsDoctor);
 router.delete("/delete-report/:reportId", isAuthPatient, deleteReport);
 router.get("/get-doctors-with-access/:reportId", isAuthPatient, getDoctorsWithAccess);
 router.put("/update-doctors-access/:reportId", isAuthPatient, updateDoctorsAccess);
+router.get("/doctor-view-report/:reportId", isAuthDoctor, doctorViewReport);
 
 export default router;
-
-//Update doctor view to two steps
