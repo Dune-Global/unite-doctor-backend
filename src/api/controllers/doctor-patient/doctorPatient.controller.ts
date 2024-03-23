@@ -315,7 +315,7 @@ export const getConnectedPatients = async (
     const response = await Promise.all(
       connectedPatients.map(async (session) => {
         const patient = await Patient.findById(session.patient)
-          .select('-password -__v') 
+          .select("-password -__v")
           .lean();
 
         return {
@@ -542,11 +542,14 @@ export const updateSharedDoctors = async (
       status: "connected",
     });
 
-    let doctorsIdList = patientsDoctorList.map((session) => session.doctor.toString());
-
-    let doctorsCurrentAccess = session.allowedDoctorsToViewThisDoctorsSessionDetails.map((doc) =>
-      doc.doctorId.toString()
+    let doctorsIdList = patientsDoctorList.map((session) =>
+      session.doctor.toString()
     );
+
+    let doctorsCurrentAccess =
+      session.allowedDoctorsToViewThisDoctorsSessionDetails.map((doc) =>
+        doc.doctorId.toString()
+      );
 
     for (let doctor of allowedDoctors) {
       // Exclude the current session's doctor
@@ -585,10 +588,12 @@ export const updateSharedDoctors = async (
     await PatientSession.updateOne(
       { _id: session._id },
       {
-        allowedDoctorsToViewThisDoctorsSessionDetails: doctorsCurrentAccess.map((doctorId) => ({
-          doctorId,
-          informationLastAccessDate: null,
-        })),
+        allowedDoctorsToViewThisDoctorsSessionDetails: doctorsCurrentAccess.map(
+          (doctorId) => ({
+            doctorId,
+            informationLastAccessDate: null,
+          })
+        ),
       }
     );
 
@@ -637,6 +642,76 @@ export const getPermissionDoctors = async (
       doctorId: doc.doctorId,
       informationLastAccessDate: doc.informationLastAccessDate,
     }));
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDashboardData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctor = await Doctor.get(decodedToken.id);
+
+    const connectedPatients = await PatientSession.find({
+      doctor: doctor,
+      status: "connected",
+    });
+
+    const genderCount = await Patient.aggregate([
+      {
+        $match: {
+          _id: { $in: connectedPatients.map((p) => p.patient) },
+        },
+      },
+      {
+        $group: {
+          _id: "$gender",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          type: "$_id",
+          count: 1,
+        },
+      },
+    ]);
+
+    const ageCount = await Patient.aggregate([
+      {
+        $match: {
+          _id: { $in: connectedPatients.map((p) => p.patient) },
+        },
+      },
+      {
+        $group: {
+          _id: { $year: "$dateOfBirth" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          type: { $toString: "$_id" },
+          count: 1,
+        },
+      },
+    ]);
+
+    const response = {
+      data: {
+        gender: genderCount,
+        age: ageCount,
+      },
+    };
 
     res.status(200).json(response);
   } catch (error) {
