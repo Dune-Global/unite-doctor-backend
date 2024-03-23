@@ -9,7 +9,8 @@ import {
   cancelAnAppointment,
   getDoctorAppointments,
   getPatientAppointments,
-  doctorAppointmentStatusUpdate
+  doctorAppointmentStatusUpdate,
+  getPatientTotalAppointments
 } from "./../../../controllers/appointment/appointment.controller";
 import { isAuthDoctor, isAuthPatient } from "../../../../middleware/auth";
 
@@ -33,5 +34,6 @@ router.patch(
   isAuthDoctor,
   doctorAppointmentStatusUpdate
 );
+router.get("/patient-total-appointments", isAuthPatient, getPatientTotalAppointments);
 
 export default router;

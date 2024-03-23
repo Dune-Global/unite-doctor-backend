@@ -645,3 +645,49 @@ export const doctorAppointmentStatusUpdate = async (
     next(error);
   }
 };
+
+export const getPatientTotalAppointments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedPatientPayload(token as string);
+    const patientId = decodedToken.id;
+
+    const appointments = await Appointment.find({
+      patient: patientId,
+    }).populate('doctorAvailabilityId');
+
+    let appointmentDetails = await Promise.all(appointments.map(async (appointment) => {
+      const doctorAvailability:any = appointment.doctorAvailabilityId;
+      const sessionTime = new Date(doctorAvailability.startTime.getTime() + appointment.appointmentNumber * doctorAvailability.sessionDuration * 60000);
+
+      const doctor:any = await Doctor.findById(doctorAvailability.doctorId);
+      return {
+        appointmentNumber: appointment.appointmentNumber,
+        sessionTime,
+        firstName: doctor.firstName,
+        lastName: doctor.lastName,
+        imgUrl: doctor.imgUrl,
+        designation: doctor.designation
+      };
+    }));
+
+    if (req.query.today === 'true') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      appointmentDetails = appointmentDetails.filter(appointment => appointment.sessionTime >= today && appointment.sessionTime < tomorrow);
+    }
+
+    appointmentDetails.sort((a, b) => a.sessionTime.getTime() - b.sessionTime.getTime());
+
+    res.status(200).json(appointmentDetails);
+  } catch (error) {
+    next(error);
+  }
+};
