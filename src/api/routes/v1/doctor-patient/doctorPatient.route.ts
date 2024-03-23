@@ -6,9 +6,9 @@ import {
   getConnectedPatients,
   getDoctorPatientDetail,
   disconnectPatientDoc,
-  givePermissionToDoctors,
+  permissionsForDoctors,
   getPermissionDoctors,
-  removePermissionFromDoctors,
+  updateSharedDoctors,
   getSharedDoctors,
 } from "../../../controllers/doctor-patient/doctorPatient.controller";
 import {
@@ -30,20 +30,20 @@ router.get(
 router.get("/connected-patients", isAuthDoctor, getConnectedPatients);
 router.get("/connected-doctors", isAuthPatient, getConnectedDoctors);
 router.get("/shared-doctors/:patientId", isAuthDoctor, getSharedDoctors);
-router.post(
+router.get(
   "/give-permission/:patientSessionId",
   isAuthPatient,
-  givePermissionToDoctors
+  permissionsForDoctors
 );
 router.get(
   "/get-permission/:patientSessionId",
   isAuthPatient,
   getPermissionDoctors
 );
-router.delete(
-  "/remove-permission/:patientSessionId",
+router.put(
+  "/update-permission/:patientSessionId",
   isAuthPatient,
-  removePermissionFromDoctors
+  updateSharedDoctors
 );
 
 export default router;

@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import Patient from "./../../../models/patient.model";
 import Doctor from "./../../../models/doctor.model";
 import Report from "./../../../models/report.model";
+import patientSessionModel from "./../../../models/patientSession.model";
 import APIError from "./../../../errors/api-error";
 import {
   decodedPatientPayload,
@@ -108,76 +109,7 @@ export const getReportsPatient = async (
   }
 };
 
-export const getDocttorWithAccess = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-    ) => {
-    try {
-        const token = req.headers["authorization"]?.split(" ")[1];
-        const decodedToken = decodedPatientPayload(token as string);
-        const patient = await Patient.get(decodedToken.id);
-    
-        if (!patient) {
-        throw new APIError({
-            message: "Patient does not exist",
-            status: 404,
-            errors: [
-            {
-                field: "Patient",
-                location: "token",
-                messages: ["Patient does not exist"],
-            },
-            ],
-            stack: "",
-        });
-        }
-    
-        const report = await Report.findById(req.params.reportId);
-    
-        if (!report) {
-        throw new APIError({
-            message: "Report does not exist",
-            status: 404,
-            errors: [
-            {
-                field: "Report",
-                location: "params",
-                messages: ["Report does not exist"],
-            },
-            ],
-            stack: "",
-        });
-        }
-
-        const doctors = report.allowedDoctorsToView;
-
-        if (report.patient.toString() !== patient._id.toString()) {
-        throw new APIError({
-            message: "You are not authorized to access this report",
-            status: 400,
-            errors: [
-            {
-                field: "Report",
-                location: "params",
-                messages: ["You are not authorized to access this report"],
-            },
-            ],
-            stack: "",
-        });
-        }
-
-        res.json({
-            doctors,
-        });
-
-    } catch (error) {
-        next(error);
-    }
-}
-        
-
-export const giveAccessToDoctor = async (
+export const getDoctorsWithAccess = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -186,7 +118,6 @@ export const giveAccessToDoctor = async (
     const token = req.headers["authorization"]?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
-    const { doctorIds } = req.body;
 
     if (!patient) {
       throw new APIError({
@@ -203,9 +134,7 @@ export const giveAccessToDoctor = async (
       });
     }
 
-    const reportId = req.params.reportId;
-
-    const report = await Report.findById(reportId);
+    const report = await Report.findById(req.params.reportId);
 
     if (!report) {
       throw new APIError({
@@ -222,6 +151,10 @@ export const giveAccessToDoctor = async (
       });
     }
 
+    const patientsDoctorList = await patientSessionModel.find({
+      patient: patient._id,
+    });
+
     if (report.patient.toString() !== patient._id.toString()) {
       throw new APIError({
         message: "You are not authorized to access this report",
@@ -237,74 +170,49 @@ export const giveAccessToDoctor = async (
       });
     }
 
-    const doctorsToAdd = [];
+    let doctorsIdList = patientsDoctorList.map((session) => session.doctor);
 
-    for (const doctorId of doctorIds) {
-      const doctor = await Doctor.get(doctorId);
+    let doctorsAllowed = await Promise.all(
+      doctorsIdList.map(async (doctorId) => {
+        let allowed = false;
+        let informationLastAccessDate = null;
 
-      if (!doctor) {
-        throw new APIError({
-          message: "Doctor does not exist",
-          status: 404,
-          errors: [
-            {
-              field: "Doctor",
-              location: "body",
-              messages: ["Doctor does not exist"],
-            },
-          ],
-          stack: "",
-        });
-      }
+        for (let allowedDoctor of report.allowedDoctorsToView) {
+          if (allowedDoctor.doctorId.toString() === doctorId.toString()) {
+            allowed = true;
+            informationLastAccessDate = allowedDoctor.informationLastAccessDate;
+            break;
+          }
+        }
 
-      if (
-        report.allowedDoctorsToView.find(
-          (doc) => doc.doctorId.toString() === doctor._id.toString()
-        )
-      ) {
-        throw new APIError({
-          message: "Doctor already has access to this report",
-          status: 400,
-          errors: [
-            {
-              field: "Doctor",
-              location: "body",
-              messages: ["Doctor already has access to this report"],
-            },
-          ],
-          stack: "",
-        });
-      }
+        // Fetch doctor's details from the database
+        const doctor = await Doctor.findById(doctorId);
 
-      doctorsToAdd.push({
-        doctorId: doctor,
-        informationLastAccessDate: null,
-      });
-    }
+        if (!doctor) {
+          throw new Error("Doctor not found");
+        }
 
-    // Give access to the doctors
-    const updatedReport = await Report.findByIdAndUpdate(
-      report._id,
-      {
-        $push: {
-          allowedDoctorsToView: {
-            $each: doctorsToAdd, // Add all doctors in the array
-          },
-        },
-      },
-      { new: true }
+        return {
+          doctorId,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          designation: doctor.designation,
+          imgUrl: doctor.imgUrl,
+          informationLastAccessDate,
+          allowed,
+        };
+      })
     );
 
     res.json({
-      message: "Access given to the doctors",
-      report: updatedReport,
+      doctorsAllowed,
     });
   } catch (error) {
     next(error);
   }
 };
 
-export const removeAccessToDoctor = async (
+export const updateDoctorsAccess = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -313,7 +221,7 @@ export const removeAccessToDoctor = async (
     const token = req.headers["authorization"]?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
-    const { doctorIds } = req.body;
+    const { doctorsAllowed } = req.body;
 
     if (!patient) {
       throw new APIError({
@@ -330,9 +238,7 @@ export const removeAccessToDoctor = async (
       });
     }
 
-    const reportId = req.params.reportId;
-
-    const report = await Report.findById(reportId);
+    const report = await Report.findById(req.params.reportId);
 
     if (!report) {
       throw new APIError({
@@ -364,64 +270,42 @@ export const removeAccessToDoctor = async (
       });
     }
 
-    const doctorsToRemove = [];
+    const patientsDoctorList = await patientSessionModel.find({
+      patient: patient._id,
+    });
 
-    for (const doctorId of doctorIds) {
-      const doctor = await Doctor.get(doctorId);
+    let doctorsIdList = patientsDoctorList.map((session) => session.doctor);
 
-      if (!doctor) {
-        throw new APIError({
-          message: "Doctor does not exist",
-          status: 404,
-          errors: [
-            {
-              field: "Doctor",
-              location: "body",
-              messages: ["Doctor does not exist"],
-            },
-          ],
-          stack: "",
-        });
+    let doctorsCurrentAccess = report.allowedDoctorsToView.map((doc) =>
+      doc.doctorId.toString()
+    );
+
+    for (let doctor of doctorsAllowed) {
+      if (doctor.allowed && !doctorsCurrentAccess.includes(doctor.doctorId)) {
+        // Doctor is allowed and not already in the array, so add them
+        doctorsCurrentAccess.push(doctor.doctorId);
+      } else if (!doctor.allowed) {
+        // Doctor is not allowed, so remove them from the array if they are in it
+        doctorsCurrentAccess = doctorsCurrentAccess.filter(
+          (id) => id !== doctor.doctorId
+        );
       }
-
-      if (
-        !report.allowedDoctorsToView.find(
-          (doc) => doc.doctorId.toString() === doctor._id.toString()
-        )
-      ) {
-        throw new APIError({
-          message: "Doctor does not have access to this report",
-          status: 400,
-          errors: [
-            {
-              field: "Doctor",
-              location: "body",
-              messages: ["Doctor does not have access to this report"],
-            },
-          ],
-          stack: "",
-        });
-      }
-
-      doctorsToRemove.push(doctor);
     }
 
-    // Remove access to the doctors
-    const updatedReport = await Report.findByIdAndUpdate(
-      report._id,
+    // Update the report in the database
+    await Report.updateOne(
+      { _id: report._id },
       {
-        $pull: {
-          allowedDoctorsToView: {
-            doctorId: { $in: doctorsToRemove },
-          },
-        },
-      },
-      { new: true }
+        allowedDoctorsToView: doctorsCurrentAccess.map((doctorId) => ({
+          doctorId,
+          informationLastAccessDate: null,
+        })),
+      }
     );
 
     res.json({
-      message: "Access removed from the doctors",
-      report: updatedReport,
+      doctorsIdList,
+      doctorsCurrentAccess,
     });
   } catch (error) {
     next(error);

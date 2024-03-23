@@ -407,7 +407,8 @@ export const getSharedDoctors = async (
     next(err);
   }
 };
-export const givePermissionToDoctors = async (
+
+export const permissionsForDoctors = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -417,12 +418,12 @@ export const givePermissionToDoctors = async (
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
 
-    const session = await PatientSession.findOne({
+    const sessionNeedToShare = await PatientSession.findOne({
       patient: patient,
       _id: req.params.patientSessionId,
     });
 
-    if (!session) {
+    if (!sessionNeedToShare) {
       throw new APIError({
         message: `Session does not belong to you`,
         status: 403,
@@ -437,7 +438,7 @@ export const givePermissionToDoctors = async (
       });
     }
 
-    if (session.doctor.toString() === req.body.doctorId) {
+    if (sessionNeedToShare.doctor.toString() === req.body.doctorId) {
       throw new APIError({
         message: `This doctor already has permission`,
         status: 409,
@@ -452,68 +453,51 @@ export const givePermissionToDoctors = async (
       });
     }
 
-    const allowedDoctors =
-      session.allowedDoctorsToViewThisDoctorsSessionDetails;
-    const doctorId = req.body.doctorId;
-    const doctor = await Doctor.get(doctorId);
-
-    if (
-      allowedDoctors.find(
-        (doc) => doc.doctorId.toString() === doctor._id.toString()
-      )
-    ) {
-      throw new APIError({
-        message: `Doctor already has permission`,
-        status: 409,
-        errors: [
-          {
-            field: "Doctor",
-            location: "params",
-            messages: [`Doctor already has permission`],
-          },
-        ],
-        stack: "",
-      });
-    }
-    const sessionAsking = await PatientSession.findOne({
-      patient: patient,
-      doctor: doctor,
+    const patientsDoctorList = await PatientSession.find({
+      patient: patient._id,
+      doctor: { $ne: sessionNeedToShare.doctor }, // exclude the doctor who owns the session
     });
 
-    if (!sessionAsking) {
-      throw new APIError({
-        message: `You are not connected with the doctor`,
-        status: 409,
-        errors: [
-          {
-            field: "Doctor",
-            location: "params",
-            messages: [`You are not connected with the doctor`],
-          },
-        ],
-        stack: "",
-      });
-    }
+    let doctorsIdList = patientsDoctorList.map((session) => session.doctor);
 
-    const updatedSession = await PatientSession.findByIdAndUpdate(
-      session._id,
-      {
-        $push: {
-          allowedDoctorsToViewThisDoctorsSessionDetails: {
-            doctorId: doctor,
-          },
-        },
-      },
-      { new: true }
+    let allowedDoctors = await Promise.all(
+      doctorsIdList.map(async (doctorId) => {
+        let allowed = false;
+        let informationLastAccessDate = null;
+
+        for (let allowedDoctor of sessionNeedToShare.allowedDoctorsToViewThisDoctorsSessionDetails) {
+          if (allowedDoctor.doctorId.toString() === doctorId.toString()) {
+            allowed = true;
+            informationLastAccessDate = allowedDoctor.informationLastAccessDate;
+            break;
+          }
+        }
+
+        const doctor = await Doctor.findById(doctorId);
+
+        if (!doctor) {
+          throw new Error("Doctor not found");
+        }
+
+        return {
+          doctorId,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          designation: doctor.designation,
+          imgUrl: doctor.imgUrl,
+          informationLastAccessDate,
+          allowed,
+        };
+      })
     );
 
-    res.status(200).json(updatedSession);
+    res.status(200).json({ allowedDoctors });
   } catch (error) {
     next(error);
   }
 };
 
-export const removePermissionFromDoctors = async (
+export const updateSharedDoctors = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -522,6 +506,7 @@ export const removePermissionFromDoctors = async (
     const token = req.headers.authorization?.split(" ")[1];
     const decodedToken = decodedPatientPayload(token as string);
     const patient = await Patient.get(decodedToken.id);
+    const { allowedDoctors } = req.body;
 
     const session = await PatientSession.findOne({
       patient: patient,
@@ -543,43 +528,65 @@ export const removePermissionFromDoctors = async (
       });
     }
 
-    const allowedDoctors =
-      session.allowedDoctorsToViewThisDoctorsSessionDetails;
-    const doctorId = req.body.doctorId;
-    const doctor = await Doctor.get(doctorId);
+    const patientsDoctorList = await PatientSession.find({
+      patient: patient._id,
+      status: "connected",
+    });
 
-    if (
-      !allowedDoctors.find(
-        (doc) => doc.doctorId.toString() === doctor._id.toString()
-      )
-    ) {
-      throw new APIError({
-        message: `Doctor does not have permission`,
-        status: 409,
-        errors: [
-          {
-            field: "Doctor",
-            location: "params",
-            messages: [`Doctor does not have permission`],
-          },
-        ],
-        stack: "",
-      });
-    }
+    let doctorsIdList = patientsDoctorList.map((session) => session.doctor.toString());
 
-    const updatedSession = await PatientSession.findByIdAndUpdate(
-      session._id,
-      {
-        $pull: {
-          allowedDoctorsToViewThisDoctorsSessionDetails: {
-            doctorId: doctor,
-          },
-        },
-      },
-      { new: true }
+    let doctorsCurrentAccess = session.allowedDoctorsToViewThisDoctorsSessionDetails.map((doc) =>
+      doc.doctorId.toString()
     );
 
-    res.status(200).json(updatedSession);
+    for (let doctor of allowedDoctors) {
+      // Exclude the current session's doctor
+      if (doctor.doctorId === session.doctor.toString()) {
+        continue;
+      }
+
+      // Check if the doctor is connected to the patient
+      if (!doctorsIdList.includes(doctor.doctorId)) {
+        throw new APIError({
+          message: `Doctor ${doctor.doctorId} is not connected to the patient`,
+          status: 400,
+          errors: [
+            {
+              field: "Doctor",
+              location: "body",
+              messages: [`Doctor is not connected to the patient`],
+            },
+          ],
+          stack: "",
+        });
+      }
+
+      if (doctor.allowed && !doctorsCurrentAccess.includes(doctor.doctorId)) {
+        // Doctor is allowed and not already in the array, so add them
+        doctorsCurrentAccess.push(doctor.doctorId);
+      } else if (!doctor.allowed) {
+        // Doctor is not allowed, so remove them from the array if they are in it
+        doctorsCurrentAccess = doctorsCurrentAccess.filter(
+          (id) => id !== doctor.doctorId
+        );
+      }
+    }
+
+    // Update the session in the database
+    await PatientSession.updateOne(
+      { _id: session._id },
+      {
+        allowedDoctorsToViewThisDoctorsSessionDetails: doctorsCurrentAccess.map((doctorId) => ({
+          doctorId,
+          informationLastAccessDate: null,
+        })),
+      }
+    );
+
+    res.json({
+      doctorsIdList,
+      doctorsCurrentAccess,
+    });
   } catch (error) {
     next(error);
   }
