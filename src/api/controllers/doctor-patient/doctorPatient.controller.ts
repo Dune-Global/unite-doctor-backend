@@ -355,6 +355,7 @@ export const getConnectedDoctors = async (
         gender: session.doctor.gender,
         email: session.doctor.email,
         doctorLastAccessedDate: session.doctorLastAccessedDate,
+        imgUrl: session.doctor.imgUrl,
       },
       status: session.status,
     }));
