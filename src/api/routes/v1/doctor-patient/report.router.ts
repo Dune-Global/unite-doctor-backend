@@ -4,8 +4,8 @@ import {
   deleteReport,
   getReportsPatient,
   getReportsDoctor,
-  giveAccessToDoctor,
-  removeAccessToDoctor
+  getDoctorsWithAccess,
+  updateDoctorsAccess
 } from "./../../../controllers/doctor-patient/report.controller";
 import { isAuthDoctor, isAuthPatient } from "./../../../../middleware/auth";
 
@@ -15,16 +15,8 @@ router.post("/attach-report", isAuthPatient, attachReport);
 router.get("/get-reports-patient", isAuthPatient, getReportsPatient);
 router.get("/get-reports-doctor/:patientId", isAuthDoctor, getReportsDoctor);
 router.delete("/delete-report/:reportId", isAuthPatient, deleteReport);
-router.post(
-  "/allow-doctor/:reportId",
-  isAuthPatient,
-  giveAccessToDoctor
-);
-router.post(
-  "/remove-doctor/:reportId",
-  isAuthPatient,
-  removeAccessToDoctor
-);
+router.get("/get-doctors-with-access/:reportId", isAuthPatient, getDoctorsWithAccess);
+router.put("/update-doctors-access/:reportId", isAuthPatient, updateDoctorsAccess);
 
 export default router;
 
