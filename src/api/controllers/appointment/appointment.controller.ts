@@ -287,6 +287,23 @@ export const getAvailableAppointmentNumbers = async (
       });
     }
 
+    if(doctorAvailability.status === AppointmentStatus.CANCELLED || doctorAvailability.status === AppointmentStatus.DONE) {
+      throw new APIError({
+        message: `Doctor schedule is not available`,
+        status: 403,
+        errors: [
+          {
+            field: "doctorSchedule",
+            location: "params",
+            messages: [
+              `Doctor schedule is not available`,
+            ],
+          },
+        ],
+        stack: "",
+      });
+    }
+
     // Exclude cancelled appointments from the takenAppointmentNumbers array
     const appointments = await Appointment.find({
       doctorAvailabilityId,
@@ -355,7 +372,7 @@ export const getAnAppointment = async (
     );
 
     // Check if doctorAvailability is null
-    if (!doctorAvailability) {
+    if (!doctorAvailability || doctorAvailability.status === AppointmentStatus.CANCELLED || doctorAvailability.status === AppointmentStatus.DONE) {
       throw new APIError({
         message: `Doctor schedule not found with id: ${doctorAvailability}`,
         status: 403,
