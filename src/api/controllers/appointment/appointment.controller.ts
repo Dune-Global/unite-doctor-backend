@@ -688,7 +688,9 @@ export const getPatientTotalAppointments = async (
         firstName: doctor.firstName,
         lastName: doctor.lastName,
         imgUrl: doctor.imgUrl,
-        designation: doctor.designation
+        designation: doctor.designation,
+        email:doctor.email,
+        gender:doctor.gender,
       };
     }));
 
