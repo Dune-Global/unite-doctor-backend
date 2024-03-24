@@ -287,7 +287,10 @@ export const getAvailableAppointmentNumbers = async (
       });
     }
 
-    if(doctorAvailability.status === AppointmentStatus.CANCELLED || doctorAvailability.status === AppointmentStatus.DONE) {
+    if (
+      doctorAvailability.status === AppointmentStatus.CANCELLED ||
+      doctorAvailability.status === AppointmentStatus.DONE
+    ) {
       throw new APIError({
         message: `Doctor schedule is not available`,
         status: 403,
@@ -295,9 +298,7 @@ export const getAvailableAppointmentNumbers = async (
           {
             field: "doctorSchedule",
             location: "params",
-            messages: [
-              `Doctor schedule is not available`,
-            ],
+            messages: [`Doctor schedule is not available`],
           },
         ],
         stack: "",
@@ -372,7 +373,11 @@ export const getAnAppointment = async (
     );
 
     // Check if doctorAvailability is null
-    if (!doctorAvailability || doctorAvailability.status === AppointmentStatus.CANCELLED || doctorAvailability.status === AppointmentStatus.DONE) {
+    if (
+      !doctorAvailability ||
+      doctorAvailability.status === AppointmentStatus.CANCELLED ||
+      doctorAvailability.status === AppointmentStatus.DONE
+    ) {
       throw new APIError({
         message: `Doctor schedule not found with id: ${doctorAvailability}`,
         status: 403,
@@ -675,35 +680,149 @@ export const getPatientTotalAppointments = async (
 
     const appointments = await Appointment.find({
       patient: patientId,
-    }).populate('doctorAvailabilityId');
+    }).populate("doctorAvailabilityId");
 
-    let appointmentDetails = await Promise.all(appointments.map(async (appointment) => {
-      const doctorAvailability:any = appointment.doctorAvailabilityId;
-      const sessionTime = new Date(doctorAvailability.startTime.getTime() + appointment.appointmentNumber * doctorAvailability.sessionDuration * 60000);
+    let appointmentDetails = await Promise.all(
+      appointments.map(async (appointment) => {
+        const doctorAvailability: any = appointment.doctorAvailabilityId;
 
-      const doctor:any = await Doctor.findById(doctorAvailability.doctorId);
-      return {
-        appointmentNumber: appointment.appointmentNumber,
-        sessionTime,
-        firstName: doctor.firstName,
-        lastName: doctor.lastName,
-        imgUrl: doctor.imgUrl,
-        designation: doctor.designation
-      };
-    }));
+        // Check if doctorAvailability is not null
+        if (!doctorAvailability) {
+          return null;
+        }
 
-    if (req.query.today === 'true') {
+        const sessionTime = new Date(
+          doctorAvailability.startTime.getTime() +
+            appointment.appointmentNumber *
+              doctorAvailability.sessionDuration *
+              60000
+        );
+
+        const doctor: any = await Doctor.findById(doctorAvailability.doctorId);
+        return {
+          appointmentNumber: appointment.appointmentNumber,
+          sessionTime,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          imgUrl: doctor.imgUrl,
+          designation: doctor.designation,
+          email: doctor.email,
+          gender: doctor.gender,
+        };
+      })
+    );
+
+    // Filter out null values
+    let nonNullAppointmentDetails = appointmentDetails.filter(
+      (appointment): appointment is NonNullable<typeof appointment> =>
+        appointment !== null
+    );
+
+    if (req.query.today === "true") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      appointmentDetails = appointmentDetails.filter(appointment => appointment.sessionTime >= today && appointment.sessionTime < tomorrow);
+      nonNullAppointmentDetails = nonNullAppointmentDetails.filter(
+        (appointment) =>
+          appointment.sessionTime >= today && appointment.sessionTime < tomorrow
+      );
     }
 
-    appointmentDetails.sort((a, b) => a.sessionTime.getTime() - b.sessionTime.getTime());
+    nonNullAppointmentDetails.sort(
+      (a, b) => a.sessionTime.getTime() - b.sessionTime.getTime()
+    );
 
-    res.status(200).json(appointmentDetails);
+    res.status(200).json(nonNullAppointmentDetails);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAnAppointmentsByDate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    const decodedToken = decodedDoctorPayload(token as string);
+    const doctorId = decodedToken.id;
+
+    const yearNumber = parseInt(req.params.year, 10);
+    const monthNumber = parseInt(req.params.month, 10);
+    const dayNumber = parseInt(req.params.day, 10);
+
+    // Create a date object for the start of the day
+    const startDate = new Date(yearNumber, monthNumber - 1, dayNumber);
+    // Create a date object for the end of the day
+    const endDate = new Date(
+      yearNumber,
+      monthNumber - 1,
+      dayNumber,
+      23,
+      59,
+      59
+    );
+
+    // Query the database for doctor's availabilities that match the date and doctor's ID
+    const doctorAvailabilities = await DoctorAvailability.find({
+      doctorId: doctorId,
+      date: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    });
+
+    // For each doctor's availability, find the appointments
+    const appointments = [];
+    for (const availability of doctorAvailabilities) {
+      const availabilityAppointments = await Appointment.find({
+        doctorAvailabilityId: availability._id,
+      })
+      .populate("doctorAvailabilityId")
+      .populate("patient");
+
+      const appointmentDetails = await Promise.all(
+        availabilityAppointments.map(async (appointment) => {
+          const doctorAvailability: any = appointment.doctorAvailabilityId;
+          const patient: any = appointment.patient;
+
+          // Check if doctorAvailability and patient are not null
+          if (!doctorAvailability || !patient) {
+            return null;
+          }
+
+          // Calculate the appointment time
+          const appointmentTime = new Date(
+            doctorAvailability.startTime.getTime() +
+              (appointment.appointmentNumber - 1) *
+                doctorAvailability.sessionDuration *
+                60000
+          );
+
+          return {
+            appointmentNumber: appointment.appointmentNumber,
+            appointmentTime,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            imgUrl: patient.imgUrl,
+          };
+        })
+      );
+
+      appointments.push(...appointmentDetails);
+    }
+
+    // Filter out null values
+    let nonNullAppointmentDetails = appointments.filter(
+      (appointment): appointment is NonNullable<typeof appointment> =>
+        appointment !== null
+    );
+
+    // Send the appointments to the client
+    res.json(nonNullAppointmentDetails);
   } catch (error) {
     next(error);
   }

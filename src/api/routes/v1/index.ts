@@ -14,6 +14,12 @@ router.get("/tryme", (_req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
+// Add a new GET route to return the current date and time
+router.get("/currentDateTime", (_req:Request, res:Response) => {
+  const currentDateTime = new Date();
+  res.send(currentDateTime.toISOString());
+});
+
 // Plug the router into the express app
 router.use("/doctor", doctorRouter);
 router.use("/patient", patientRouter);

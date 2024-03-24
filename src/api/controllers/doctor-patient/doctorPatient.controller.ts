@@ -7,6 +7,10 @@ import {
   decodedDoctorPayload,
 } from "./../../../utils/jwt-auth/jwtDecoder";
 import APIError from "./../../../errors/api-error";
+import {
+  Appointment,
+  DoctorAvailability,
+} from "./../../../models/appointment.model";
 
 export const connectPatientDoc = async (
   req: Request,
@@ -401,11 +405,15 @@ export const getSharedDoctors = async (
           sessionId: session._id,
           doctorId: session.doctor,
           doctorDetails: {
+            id: doctor._id,
+            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+            speciality: doctor.designation,
+            email: doctor.email,
+            contactNUmber: doctor.mobile,
             firstName: doctor.firstName,
             lastName: doctor.lastName,
             designation: doctor.designation,
-            email: doctor.email,
-            contactNo: doctor.mobile,
+            imgUrl: doctor.imgUrl,
           },
         };
       })
@@ -664,6 +672,29 @@ export const getDashboardData = async (
       status: "connected",
     });
 
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    );
+    const tomorrow = new Date(
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    );
+
+    const todayDoctorAvailabilities = await DoctorAvailability.find({
+      doctorId: doctor._id,
+      date: { $gte: today, $lt: tomorrow },
+    });
+
+    const todayAppointments = await Appointment.find({
+      doctorAvailabilityId: {
+        $in: todayDoctorAvailabilities.map((da) => da._id),
+      },
+      status: "Pending",
+    }).populate({
+      path: "patient",
+      select: "imgUrl firstName lastName",
+    });
+
     const genderCount = await Patient.aggregate([
       {
         $match: {
@@ -708,6 +739,17 @@ export const getDashboardData = async (
 
     const response = {
       data: {
+        connectedPatientsCount: connectedPatients.length,
+        todayAppointmentsCount: todayAppointments.length,
+        todayDoctorAvailabilities,
+        todayAppointments: todayAppointments.map((appointment) => ({
+          _id: appointment._id,
+          appointmentNumber: appointment.appointmentNumber,
+          status: appointment.status,
+          patientImgUrl: (appointment.patient as any).imgUrl,
+          patientFirstName: (appointment.patient as any).firstName,
+          patientLastName: (appointment.patient as any).lastName,
+        })),
         gender: genderCount,
         age: ageCount,
       },
