@@ -19,6 +19,7 @@ export interface Session {
   stage: string;
   medicine: Medicine[];
   reports: Report[];
+  bloodPressure?: number;
   weight?: number;
   height?: number;
   nextChanelDate?: Date;

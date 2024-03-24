@@ -27,6 +27,7 @@ const sessionSchema = new Schema<Session>({
   stage: { type: String, enum: Object.values(medicalStatus) },
   medicine: { type: [medicineSchema], default: [] },
   reports: { type: [reportSchema], default: [] },
+  bloodPressure: { type: Number, default: null },
   weight: { type: Number, default: null },
   height: { type: Number, default: null },
   nextChanelDate: { type: Date, default: null },
