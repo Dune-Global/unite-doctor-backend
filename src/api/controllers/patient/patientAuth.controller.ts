@@ -44,7 +44,7 @@ export const registerPatient = async (
     const mailSendDetails = await sendPatientAccountActivationMail(
       savedPatient.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${savedPatient.firstName}${savedPatient.lastName}?at=${accountActivationToken}`,
+      `${env.patientFrontendUrl}activate-account/${savedPatient.firstName}${savedPatient.lastName}?at=${accountActivationToken}`,
       savedPatient.firstName,
       savedPatient.lastName
     );
@@ -102,7 +102,7 @@ export const getVerifyEmail = async (
       const mailSendDetails = await sendPatientAccountActivationMail(
         patient.email,
         "Account Activation",
-        `${env.fontendUrl}activate-account/${patient.firstName}${patient.lastName}?at=${accountActivationToken}`,
+        `${env.patientFrontendUrl}activate-account/${patient.firstName}${patient.lastName}?at=${accountActivationToken}`,
         patient.firstName,
         patient.lastName
       );
@@ -233,7 +233,7 @@ export const sendResetPasswordEmail = async (
     const mailSendDetails = await sendPatientResetPasswordMail(
       patient.email,
       "Account Activation",
-      `${env.fontendUrl}activate-account/${patient.firstName}${patient.lastName}?rp=${resetPasswordToken}`,
+      `${env.patientFrontendUrl}activate-account/${patient.firstName}${patient.lastName}?rp=${resetPasswordToken}`,
       patient.firstName,
       patient.lastName
     );

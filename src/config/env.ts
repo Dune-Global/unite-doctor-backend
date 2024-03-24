@@ -23,6 +23,7 @@ export default {
   accountActivationTokenExpIn: process.env.ACCOUNT_ACTIVATION_TOKEN_EXPIRES_IN,
   passwordResetTokenSecret: process.env.PASSWORD_RESET_TOKEN_SECRET,
   passwordResetTokenExpIn: process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN,
-  fontendUrl: process.env.FRONTEND_URL,
+  patientFrontendUrl: process.env.PATIENT_FRONTEND_URL,
+  doctorFrontendUrl: process.env.DOCTOR_FRONTEND_URL,
   isSession: process.env.IS_SESSION as unknown as boolean,
 };
